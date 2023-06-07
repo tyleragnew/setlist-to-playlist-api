@@ -16,7 +16,7 @@ import { SpotifyClient } from './clients/SpotifyClient';
     SetlistService,
     SetlistFMClient,
     PlaylistService,
-    SpotifyClient
+    SpotifyClient,
   ],
 })
-export class AppModule { }
+export class AppModule {}
