@@ -6,19 +6,20 @@ import { AverageSetlist } from './SetlistService';
 export class PlaylistService {
   constructor(private readonly spotifyClient: SpotifyClient) {}
 
-  putTogetherPlaylistDraftFromAverageSetlist(averageSetlist: AverageSetlist) {
-    return this.spotifyClient
-      .getTrackIdsbyArtistNameAndTrackNames(averageSetlist)
-      .then((res) => {
-        return res;
-      });
+  async putTogetherPlaylistDraftFromAverageSetlist(
+    averageSetlist: AverageSetlist,
+  ) {
+    const res = await this.spotifyClient.getTrackIdsbyArtistNameAndTrackNames(
+      averageSetlist,
+    );
+    return res;
   }
 
-  makePlaylist(userId, playlistMetadata) {
-    return this.spotifyClient
-      .createPlaylist(userId, playlistMetadata)
-      .then((res) => {
-        return res;
-      });
+  async makePlaylist(userId, playlistMetadata) {
+    const res = await this.spotifyClient.createPlaylist(
+      userId,
+      playlistMetadata,
+    );
+    return res;
   }
 }

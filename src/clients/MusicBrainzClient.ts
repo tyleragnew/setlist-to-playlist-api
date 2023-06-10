@@ -2,7 +2,7 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { AxiosRequestConfig } from 'axios';
 
-type ArtistMetadata = {
+export type ArtistMetadata = {
   artistName: string;
   description: string;
   mbid: string;

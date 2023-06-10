@@ -16,6 +16,12 @@ export class SetlistsController {
     @Query('numberOfSets') numberOfSets: number,
     @Query('userId') userId: string,
   ) {
+    /* @TODO
+      Right now this is in the Setlist Controller for e2e testing purposes,
+      but will need to be moved into the Playlist controller.
+      This is why there is promise resolution in the Controller.
+    */
+
     const totalSetlistMetadata = await this.setlistService
       .getAverageSetlistByArtistName(artistMBID, numberOfSets)
       .then((res) => {

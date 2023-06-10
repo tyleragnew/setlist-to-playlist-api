@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { SpotifyClient } from 'src/clients/SpotifyClient';
 import { AverageSetlist } from './SetlistService';
-import { MusicBrainzClient } from 'src/clients/MusicBrainzClient';
+import {
+  ArtistMetadata,
+  MusicBrainzClient,
+} from 'src/clients/MusicBrainzClient';
 
 @Injectable()
 export class ArtistService {

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { SetlistFMClient } from 'src/clients/SetlistFMClient';
+import { SetlistFMClient, SetlistMetadata } from 'src/clients/SetlistFMClient';
 
 type SongStat = {
   title: string;
@@ -17,24 +17,41 @@ export type AverageSetlist = {
 export class SetlistService {
   constructor(private readonly setlistFMClient: SetlistFMClient) {}
 
-  getSetlistsByArtistAndNumberOfShows(
-    artistName: string,
-    numberOfSets: number,
-  ) {
-    return this.setlistFMClient
-      .getSetlistsByArtistName(artistName, numberOfSets)
-      .then((response) => {
-        return response;
-      });
-  }
-
   async getAverageSetlistByArtistName(artistId: string, numberOfSets: number) {
-    const setlistMetadata = await this.getSetlistsByArtistAndNumberOfShows(
-      artistId,
-      numberOfSets,
-    ).then((response) => {
-      return response;
-    });
+    const setlistsByArtist = await this.setlistFMClient
+      .getSetlistsByArtistName(artistId)
+      .then((res) => {
+        return res;
+      });
+
+    // Compile all sets
+    const sets = setlistsByArtist.setlist.map((obj) => obj.sets);
+
+    const songs: string[][] = [];
+
+    for (let x = 0; x < sets.length; x++) {
+      // Get songs from the main set and encores in a single list
+      songs.push(
+        sets[x].set
+          .map((i) => i.song)
+          .flat()
+          .map((x) => x.name.trim()),
+      );
+    }
+
+    // Return only sets that have songs
+    const setsWithSongs = songs.filter(
+      (subArray: any[]) => subArray.length > 0,
+    );
+
+    const numberOfShowsToReturn =
+      numberOfSets < setsWithSongs.length ? numberOfSets : setsWithSongs.length;
+
+    const setlistMetadata: SetlistMetadata = {
+      setlists: setsWithSongs.slice(0, numberOfShowsToReturn),
+      artistName: setlistsByArtist.setlist[0].artist.name,
+      mbid: setlistsByArtist.artistMBID,
+    };
 
     let setlistLength = 0;
 
