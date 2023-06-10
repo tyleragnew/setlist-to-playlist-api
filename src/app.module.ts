@@ -23,4 +23,4 @@ import { SetlistsController } from './controllers/SetlistController';
     SpotifyClient,
   ],
 })
-export class AppModule { }
+export class AppModule {}
