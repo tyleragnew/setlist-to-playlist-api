@@ -40,6 +40,7 @@ export class SpotifyClient {
 
             const requests = averageSetlist.songs.map((song) =>
                 this.httpService
+                    //@ts-ignore
                     .get(this.generateURL(song, averageSetlist.artistName), requestConfig)
                     .toPromise()
             );

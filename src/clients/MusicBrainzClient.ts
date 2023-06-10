@@ -8,23 +8,28 @@ type ArtistMetadata = {
     mbid: string
 }
 
+const headers = {
+    Accept: 'application/json',
+};
+
 @Injectable()
 export class MusicBrainzClient {
     constructor(private readonly httpService: HttpService) { }
 
-    headers = {
-        Accept: 'application/json',
-    };
-
-    requestConfig: AxiosRequestConfig = {
-        headers: this.headers,
-    };
 
     async searchForMusicBrainzMetadataByArtistName(artist: string): Promise<ArtistMetadata[]> {
 
+        const config: AxiosRequestConfig = {
+            method: 'get',
+            url: `https://musicbrainz.org/ws/2/artist/?query=${artist}`,
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          };
+
         const response = await this.httpService.get(
-            `https://musicbrainz.org/ws/2/artist/?query=${artist}`,
-            this.requestConfig).toPromise()
+            //@ts-ignore
+            `https://musicbrainz.org/ws/2/artist/?query=${artist}`, config).toPromise()
 
         return response.data.artists.map(artist => ({
             artistName: artist.name,

@@ -36,6 +36,7 @@ export class SetlistFMClient {
             const response = await this.httpService
                 .get(
                     SETLIST_FM_BASE_URL + `artist/${artistMBID}/setlists`,
+                    //@ts-ignore
                     requestConfig,
                 )
                 .toPromise();
