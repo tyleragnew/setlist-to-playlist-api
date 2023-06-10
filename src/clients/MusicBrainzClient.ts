@@ -28,7 +28,7 @@ export class MusicBrainzClient {
           };
 
         const response = await this.httpService.get(
-            //@ts-ignore
+            // @ts-ignore
             `https://musicbrainz.org/ws/2/artist/?query=${artist}`, config).toPromise()
 
         return response.data.artists.map(artist => ({

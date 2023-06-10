@@ -113,7 +113,12 @@ export class SpotifyClient {
                 { headers }
             ).toPromise()
 
-            return modifyPlaylistResponse.data
+            const response = {
+                data: modifyPlaylistResponse.data,
+                unmappedSongs: playlistMetadata.unmappedSongs
+            }
+
+            return response
 
         } catch (error) {
             return error
