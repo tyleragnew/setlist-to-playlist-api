@@ -1,85 +1,123 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { AxiosRequestConfig } from 'axios';
-import { error } from 'console';
-import { response } from 'express';
 import {
-  SPOTIFY_AUTHORIZATION_BEARER_TOKEN,
-  SPOTIFY_BASE_URL,
+    SPOTIFY_AUTHORIZATION_BEARER_TOKEN,
+    SPOTIFY_BASE_URL,
 } from 'src/constants';
 import { AverageSetlist } from 'src/services/SetlistService';
 
 type MappedSongMetadata = {
-  songTitle: string;
-  spotifySongId: string;
+    songTitle: string;
+    spotifySongId: string;
 };
 
-type PlaylistMetadata = {
-  mappedSongsMetadata: MappedSongMetadata[];
-  unmappedSongs: string[];
+export type PlaylistMetadata = {
+    artistName: string,
+    mappedSongs: MappedSongMetadata[];
+    unmappedSongs: string[];
 };
+
+const headers = {
+    Authorization: `Bearer ${SPOTIFY_AUTHORIZATION_BEARER_TOKEN}`,
+};
+
 
 @Injectable()
 export class SpotifyClient {
-  constructor(private readonly httpService: HttpService) {}
+    constructor(private readonly httpService: HttpService) { }
 
-  //Get TrackID's by Artist Name and Track Names
-  async getTrackIdsbyArtistNameAndTrackNames(
-    averageSetlist: AverageSetlist,
-  ): Promise<PlaylistMetadata> {
-    try {
-      const headers = {
-        Authorization: `Bearer ${SPOTIFY_AUTHORIZATION_BEARER_TOKEN}`,
-      };
+    //Get TrackID's by Artist Name and Track Names
+    async getTrackIdsbyArtistNameAndTrackNames(
+        averageSetlist: AverageSetlist,
+    ): Promise<PlaylistMetadata> {
 
-      const requestConfig: AxiosRequestConfig = {
-        headers,
-      };
-
-      const requests = averageSetlist.songs.map((song) =>
-        this.httpService
-          .get(this.generateURL(song, averageSetlist.artistName), requestConfig)
-          .toPromise(),
-      );
-
-      const foundTracks: MappedSongMetadata[] = [];
-      const unfoundTracks: string[] = [];
-
-      try {
-        const responses = await Promise.all(requests);
-        responses.forEach((response) => {
-          const track = response.data.tracks.items[0];
-          if (track != null) {
-            console.log(response.data.tracks.href);
-            const trackMetadata: MappedSongMetadata = {
-              songTitle: track.name,
-              spotifySongId: track.id,
-            };
-            foundTracks.push(trackMetadata);
-          } else {
-            // @TODO - Add a friendly name to unmapped songs
-            unfoundTracks.push(response.data.tracks.href);
-          }
-        });
-
-        return {
-          mappedSongsMetadata: foundTracks,
-          unmappedSongs: unfoundTracks,
+        const requestConfig: AxiosRequestConfig = {
+            headers,
         };
-      } catch (error) {
-        console.log(error);
-        return error;
-      }
-    } catch (error) {
-      console.log(error);
-    }
-  }
 
-  generateURL(songTitle, artistTitle) {
-    const url = `https://api.spotify.com/v1/search?q=track:${songTitle.replace(
-      / /g,
-      '+',
-    )} artist:${artistTitle.replace(/ /g, '+')}&type=track&offset=0&limit=1`;
-    return url;
-  }
+        try {
+
+            const requests = averageSetlist.songs.map((song) =>
+                this.httpService
+                    .get(this.generateURL(song, averageSetlist.artistName), requestConfig)
+                    .toPromise()
+            );
+
+            const foundTracks: MappedSongMetadata[] = [];
+            const unfoundTracks: string[] = [];
+
+            const responses = await Promise.all(requests);
+
+            responses.forEach((response) => {
+                const track = response.data.tracks.items[0];
+                if (track != null) {
+                    const trackMetadata: MappedSongMetadata = {
+                        songTitle: track.name,
+                        spotifySongId: track.id,
+                    };
+                    foundTracks.push(trackMetadata);
+                } else {
+                    //@TODO - figure out something to do with medleys...
+                    const urlParams = new URLSearchParams(response.data.tracks.href);
+                    const queryParamValue = urlParams.get(`${SPOTIFY_BASE_URL}?query`).match(/track:(.*?)\sartist:/)[1];
+                    unfoundTracks.push(queryParamValue);
+                }
+            });
+
+            return {
+                artistName: averageSetlist.artistName,
+                mappedSongs: foundTracks,
+                unmappedSongs: unfoundTracks,
+            };
+        } catch (error) {
+            console.log(error);
+            return error;
+        }
+    }
+
+    generateURL(songTitle: string, artistTitle: string) {
+        const url = `${SPOTIFY_BASE_URL}?q=track:${songTitle.replace(
+            / /g,
+            '+',
+        )} artist:${artistTitle.replace(/ /g, '+')}&type=track&offset=0&limit=1`;
+        return url;
+    }
+
+    async createPlaylist(userId, playlistMetadata: PlaylistMetadata) {
+
+        try {
+
+            const createPlaylistRequestBody = {
+                "name": `${playlistMetadata.artistName} Setlist`,
+                "description": `A representative setlist for ${playlistMetadata.artistName}. Generated by Setlist2Playlist App`,
+                "public": true
+            };
+
+            const createPlaylistResponse = await this.httpService.post(
+                `https://api.spotify.com/v1/users/${userId}/playlists`,
+                createPlaylistRequestBody,
+                { headers }
+            ).toPromise()
+
+            const playlistId = createPlaylistResponse.data.id
+
+            const trackData = {
+                uris: playlistMetadata.mappedSongs.map(song => `spotify:track:${song.spotifySongId}`)
+            };
+
+            const modifyPlaylistResponse = await this.httpService.put(
+                `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
+                trackData,
+                { headers }
+            ).toPromise()
+
+            return modifyPlaylistResponse.data
+
+        } catch (error) {
+            return error
+        }
+
+    }
+
 }
