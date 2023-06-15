@@ -1,6 +1,6 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
-import { AxiosRequestConfig } from 'axios';
+import { lastValueFrom } from 'rxjs';
 
 export type ArtistMetadata = {
   artistName: string;
@@ -16,18 +16,16 @@ const headers = {
 export class MusicBrainzClient {
   constructor(private readonly httpService: HttpService) {}
 
-  async searchForMusicBrainzMetadataByArtistName(
-    artist: string,
-  ): Promise<ArtistMetadata[]> {
+  async searchForMusicBrainzMetadataByArtistName(artist: string) {
     const headers = {
       'Content-Type': 'application/json',
     };
 
-    const response = await this.httpService
+    const response = this.httpService
       .get(`https://musicbrainz.org/ws/2/artist/?query=${artist}`, { headers })
-      .toPromise();
+      .pipe();
 
-    return response.data.artists.map((artist) => ({
+    return (await lastValueFrom(response)).data.artists.map((artist) => ({
       artistName: artist.name,
       description: artist.disambiguation,
       mbid: artist.id,
