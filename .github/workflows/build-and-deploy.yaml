@@ -12,6 +12,8 @@ jobs:
         with:
           node-version: 20.3.0
 
+      - run: npm cache clean
+
       - run: npm install
 
       - run: npm run lint
