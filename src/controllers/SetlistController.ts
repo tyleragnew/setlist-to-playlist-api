@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, Headers } from '@nestjs/common';
 import { ArtistService } from 'src/services/ArtistService';
 import { PlaylistService } from 'src/services/PlaylistService';
 import { SetlistService } from 'src/services/SetlistService';
@@ -8,10 +8,11 @@ export class SetlistsController {
   constructor(
     private readonly setlistService: SetlistService,
     private readonly playlistService: PlaylistService,
-  ) {}
+  ) { }
 
   @Get()
   async findSetlistsByMBID(
+    @Headers() headers: Record<string, string>,
     @Query('artistMBID') artistMBID: string,
     @Query('numberOfSets') numberOfSets: number,
     @Query('userId') userId: string,
@@ -22,6 +23,8 @@ export class SetlistsController {
       This is why there is promise resolution in the Controller.
     */
 
+    const apiKey = headers['api-key'];
+
     const totalSetlistMetadata = await this.setlistService
       .getAverageSetlistByArtistName(artistMBID, numberOfSets)
       .then((res) => {
@@ -29,11 +32,11 @@ export class SetlistsController {
       });
 
     const playlistMetadata = await this.playlistService
-      .putTogetherPlaylistDraftFromAverageSetlist(totalSetlistMetadata)
+      .putTogetherPlaylistDraftFromAverageSetlist(totalSetlistMetadata, apiKey)
       .then((res) => {
         return res;
       });
 
-    return this.playlistService.makePlaylist(userId, playlistMetadata);
+    return this.playlistService.makePlaylist(userId, playlistMetadata, apiKey);
   }
 }
