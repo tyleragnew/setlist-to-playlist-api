@@ -20,6 +20,22 @@ export type PlaylistMetadata = {
 export class SpotifyClient {
   constructor(private readonly httpService: HttpService) { }
 
+  async getUserIdByApiKey(
+    apiKey: string
+  ): Promise<String> {
+
+    const headers = {
+      Authorization: `Bearer ${apiKey}`,
+    };
+
+    // Setlist.FM automatically shows the most recent shows first.
+    const response = await this.httpService
+      .get(`https://api.spotify.com/v1/me`, { headers })
+      .toPromise();
+    return response.data.id;
+
+  }
+
   //Get TrackID's by Artist Name and Track Names
   async getTrackIdsbyArtistNameAndTrackNames(
     averageSetlist: AverageSetlist,
@@ -117,7 +133,8 @@ export class SpotifyClient {
         .toPromise();
 
       const response = {
-        data: modifyPlaylistResponse.data,
+        playlistId: playlistId,
+        embedURL: `https://open.spotify.com/embed/playlist/${playlistId}?utm_source=generator`,
         unmappedSongs: playlistMetadata.unmappedSongs,
       };
 

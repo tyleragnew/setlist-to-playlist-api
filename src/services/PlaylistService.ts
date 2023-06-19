@@ -6,6 +6,13 @@ import { AverageSetlist } from './SetlistService';
 export class PlaylistService {
   constructor(private readonly spotifyClient: SpotifyClient) { }
 
+  async getUserIdFrom(apiKey: string) {
+    const res = await this.spotifyClient.getUserIdByApiKey(
+      apiKey
+    );
+    return res;
+  }
+
   async putTogetherPlaylistDraftFromAverageSetlist(
     averageSetlist: AverageSetlist,
     apiKey: string
