@@ -1,9 +1,5 @@
 import { Module } from '@nestjs/common';
-import {
-  X_API_KEY,
-  SETLIST_FM_BASE_URL,
-  SPOTIFY_BASE_URL,
-} from './constants';
+import { X_API_KEY, SETLIST_FM_BASE_URL, SPOTIFY_BASE_URL } from './constants';
 
 @Module({
   providers: [
@@ -27,4 +23,4 @@ import {
     'SPOTIFY_BASE_URL',
   ],
 })
-export class ConstantsModule { }
+export class ConstantsModule {}

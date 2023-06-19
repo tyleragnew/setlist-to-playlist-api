@@ -30,4 +30,4 @@ import { SpotifyClient } from './clients/SpotifyClient';
     SpotifyClient,
   ],
 })
-export class AppModule { }
+export class AppModule {}

@@ -3,7 +3,7 @@ import { ArtistService } from 'src/services/ArtistService';
 
 @Controller('artists')
 export class ArtistController {
-  constructor(private readonly artistService: ArtistService) { }
+  constructor(private readonly artistService: ArtistService) {}
 
   /* This endpoint will be used by the frontend to bring back artists that the 
   end-user can choose from. By coalescing around an MBID, we are much more likely

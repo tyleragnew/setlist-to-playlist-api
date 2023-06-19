@@ -4,22 +4,20 @@ import { AverageSetlist } from './SetlistService';
 
 @Injectable()
 export class PlaylistService {
-  constructor(private readonly spotifyClient: SpotifyClient) { }
+  constructor(private readonly spotifyClient: SpotifyClient) {}
 
   async getUserIdFrom(apiKey: string) {
-    const res = await this.spotifyClient.getUserIdByApiKey(
-      apiKey
-    );
+    const res = await this.spotifyClient.getUserIdByApiKey(apiKey);
     return res;
   }
 
   async putTogetherPlaylistDraftFromAverageSetlist(
     averageSetlist: AverageSetlist,
-    apiKey: string
+    apiKey: string,
   ) {
     const res = await this.spotifyClient.getTrackIdsbyArtistNameAndTrackNames(
       averageSetlist,
-      apiKey
+      apiKey,
     );
     return res;
   }
@@ -28,7 +26,7 @@ export class PlaylistService {
     const res = await this.spotifyClient.createPlaylist(
       userId,
       playlistMetadata,
-      apiKey
+      apiKey,
     );
     return res;
   }

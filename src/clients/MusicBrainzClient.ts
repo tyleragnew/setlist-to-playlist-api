@@ -15,14 +15,12 @@ const headers = {
 
 @Injectable()
 export class MusicBrainzClient {
-  constructor(private readonly httpService: HttpService) { }
+  constructor(private readonly httpService: HttpService) {}
 
   async searchForMusicBrainzMetadataByArtistName(artist: string) {
     const headers = {
       'Content-Type': 'application/json',
     };
-
-    console.log(`Calling MusicBrainz for ${artist}`)
 
     const response = this.httpService
       .get(`https://musicbrainz.org/ws/2/artist/?query=${artist}`, { headers })
@@ -32,7 +30,7 @@ export class MusicBrainzClient {
       artistName: artist.name,
       description: artist.disambiguation,
       mbid: artist.id,
-      location: artist.area?.name
+      location: artist.area?.name,
     }));
   }
 }

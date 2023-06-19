@@ -1,8 +1,6 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
-import {
-  SPOTIFY_BASE_URL
-} from 'src/constants';
+import { SPOTIFY_BASE_URL } from 'src/constants';
 import { AverageSetlist } from 'src/services/SetlistService';
 
 type MappedSongMetadata = {
@@ -18,12 +16,9 @@ export type PlaylistMetadata = {
 
 @Injectable()
 export class SpotifyClient {
-  constructor(private readonly httpService: HttpService) { }
+  constructor(private readonly httpService: HttpService) {}
 
-  async getUserIdByApiKey(
-    apiKey: string
-  ): Promise<String> {
-
+  async getUserIdByApiKey(apiKey: string): Promise<string> {
     const headers = {
       Authorization: `Bearer ${apiKey}`,
     };
@@ -33,15 +28,13 @@ export class SpotifyClient {
       .get(`https://api.spotify.com/v1/me`, { headers })
       .toPromise();
     return response.data.id;
-
   }
 
   //Get TrackID's by Artist Name and Track Names
   async getTrackIdsbyArtistNameAndTrackNames(
     averageSetlist: AverageSetlist,
-    apiKey: string
+    apiKey: string,
   ): Promise<PlaylistMetadata> {
-
     const headers = {
       Authorization: `Bearer ${apiKey}`,
     };
@@ -95,8 +88,11 @@ export class SpotifyClient {
     return url;
   }
 
-  async createPlaylist(userId, playlistMetadata: PlaylistMetadata, apiKey: string) {
-
+  async createPlaylist(
+    userId,
+    playlistMetadata: PlaylistMetadata,
+    apiKey: string,
+  ) {
     const headers = {
       Authorization: `Bearer ${apiKey}`,
     };

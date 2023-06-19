@@ -4,16 +4,13 @@ import { AverageSetlist } from 'src/services/SetlistService';
 
 @Controller('playlists')
 export class PlaylistController {
-  constructor(
-    private readonly playlistService: PlaylistService,
-  ) { }
+  constructor(private readonly playlistService: PlaylistService) {}
 
   @Post()
   async createPlaylist(
     @Body() requestBody: any,
     @Headers() headers: Record<string, string>,
   ) {
-
     const apiKey = headers['api-key'];
 
     const userId = await this.playlistService
