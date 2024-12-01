@@ -1,7 +1,7 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
-import { SPOTIFY_BASE_URL } from 'src/constants';
-import { AverageSetlist } from 'src/services/SetlistService';
+import { SPOTIFY_BASE_URL } from '../constants';
+import { AverageSetlist } from '../services/SetlistService';
 
 type MappedSongMetadata = {
   songTitle: string;

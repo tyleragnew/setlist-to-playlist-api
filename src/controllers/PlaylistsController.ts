@@ -1,6 +1,5 @@
-import { Controller, Query, Headers, Body, Post } from '@nestjs/common';
-import { PlaylistService } from 'src/services/PlaylistService';
-import { AverageSetlist } from 'src/services/SetlistService';
+import { Controller, Headers, Body, Post } from '@nestjs/common';
+import { PlaylistService } from '../services/PlaylistService';
 
 @Controller('playlists')
 export class PlaylistController {

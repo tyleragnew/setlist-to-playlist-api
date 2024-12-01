@@ -16,10 +16,16 @@ import { SetlistService } from './services/SetlistService';
 import { MusicBrainzClient } from './clients/MusicBrainzClient';
 import { SetlistFMClient } from './clients/SetlistFMClient';
 import { SpotifyClient } from './clients/SpotifyClient';
+import { HealthController } from './controllers/HealthController';
 
 @Module({
   imports: [HttpModule],
-  controllers: [ArtistController, PlaylistController, SetlistsController],
+  controllers: [
+    ArtistController,
+    PlaylistController,
+    SetlistsController,
+    HealthController,
+  ],
   providers: [
     AppService,
     ArtistService,

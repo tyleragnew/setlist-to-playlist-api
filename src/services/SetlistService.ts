@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { SetlistFMClient, SetlistMetadata } from 'src/clients/SetlistFMClient';
+import { SetlistFMClient, SetlistMetadata } from '../clients/SetlistFMClient';
 
 type SongStat = {
   title: string;

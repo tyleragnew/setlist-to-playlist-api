@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { PlaylistMetadata, SpotifyClient } from 'src/clients/SpotifyClient';
+import { PlaylistMetadata, SpotifyClient } from '../clients/SpotifyClient';
 import { AverageSetlist } from './SetlistService';
 
 @Injectable()

@@ -1,5 +1,5 @@
-import { Controller, Get, Query, Headers } from '@nestjs/common';
-import { SetlistService } from 'src/services/SetlistService';
+import { Controller, Get, Query } from '@nestjs/common';
+import { SetlistService } from '../services/SetlistService';
 
 @Controller('setlists')
 export class SetlistsController {

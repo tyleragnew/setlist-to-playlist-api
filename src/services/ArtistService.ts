@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { MusicBrainzClient } from 'src/clients/MusicBrainzClient';
+import { MusicBrainzClient } from '../clients/MusicBrainzClient';
 
 @Injectable()
 export class ArtistService {

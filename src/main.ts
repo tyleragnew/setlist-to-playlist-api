@@ -1,41 +1,21 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ExpressAdapter } from '@nestjs/platform-express';
-import * as express from 'express';
-import serverlessExpress from '@vendia/serverless-express';
-import { Handler } from 'aws-lambda';
-import { Logger } from '@nestjs/common';
+import express from 'express';
 
-let serverlessExpressHandler: Handler;
+let expressApp;
 
 async function bootstrap() {
-  const expressApp = express();
+  expressApp = express();
   const app = await NestFactory.create(
     AppModule,
     new ExpressAdapter(expressApp),
   );
 
-  app.enableCors();
-
-  // Start locally for development
-  if (process.env.IS_VERCEL !== 'true') {
-    const port = process.env.PORT || 3000;
-    await app.listen(port);
-    Logger.log(`Application is running on: http://localhost:${port}`);
-  } else {
-    // Initialize serverlessExpress for Vercel
-    await app.init();
-    serverlessExpressHandler = serverlessExpress({ app: expressApp });
-  }
+  await app.init();
 }
 
-// Bootstrap the app
-bootstrap();
+bootstrap().catch((err) => console.error('NestJS app failed to start', err));
 
-// Export the serverless handler for Vercel
-export const handler: Handler = (event, context, callback) => {
-  if (!serverlessExpressHandler) {
-    throw new Error('Serverless handler is not initialized.');
-  }
-  return serverlessExpressHandler(event, context, callback);
-};
+// This is the key export that Vercel needs
+export default expressApp;
