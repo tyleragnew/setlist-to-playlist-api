@@ -26,6 +26,8 @@
     "@nestjs/common": "^9.4.3",
     "@nestjs/core": "^9.4.3",
     "@nestjs/platform-express": "^9.4.3",
+    "@vendia/serverless-express": "^4.12.6",
+    "aws-lambda": "^1.0.7",
     "axios": "^1.4.0",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^5.0.1",

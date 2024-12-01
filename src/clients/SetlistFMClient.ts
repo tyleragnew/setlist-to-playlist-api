@@ -1,8 +1,5 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
-import { AxiosRequestConfig } from 'axios';
-import { stringify } from 'querystring';
-import { retry } from 'rxjs';
 import { SETLIST_FM_BASE_URL, X_API_KEY } from 'src/constants';
 
 export type SetlistMetadata = {

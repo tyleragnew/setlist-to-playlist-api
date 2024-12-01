@@ -15,7 +15,7 @@ export type AverageSetlist = {
 
 @Injectable()
 export class SetlistService {
-  constructor(private readonly setlistFMClient: SetlistFMClient) {}
+  constructor(private readonly setlistFMClient: SetlistFMClient) { }
 
   async getAverageSetlistByArtistName(artistId: string, numberOfSets: number) {
     const setlistsByArtist = await this.setlistFMClient
@@ -44,16 +44,18 @@ export class SetlistService {
       (subArray: any[]) => subArray.length > 0,
     );
 
-    const numberOfShowsToReturn =
-      numberOfSets < setsWithSongs.length ? numberOfSets : setsWithSongs.length;
+    // const numberOfShowsToReturn =
+    //   numberOfSets < setsWithSongs.length ? numberOfSets : setsWithSongs.length;
 
     const setlistMetadata: SetlistMetadata = {
-      setlists: setsWithSongs.slice(0, numberOfShowsToReturn),
+      setlists: setsWithSongs.slice(0, 5),
       artistName: setlistsByArtist.setlist[0].artist.name,
       mbid: setlistsByArtist.artistMBID,
     };
 
     let setlistLength = 0;
+
+    console.log("Number of Setlists: " + setlistMetadata.setlists.length)
 
     // Get number of songs in average set list and add to dictionary
     setlistMetadata.setlists.forEach((x) => {
