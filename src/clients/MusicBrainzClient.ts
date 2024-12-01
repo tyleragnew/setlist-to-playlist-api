@@ -15,19 +15,20 @@ const headers = {
 
 @Injectable()
 export class MusicBrainzClient {
-  constructor(private readonly httpService: HttpService) { }
-
+  constructor(private readonly httpService: HttpService) {}
 
   async searchForMusicBrainzMetadataByArtistName(artist: string) {
     const headers = {
       'Content-Type': 'application/json',
     };
 
-    console.log(`Searching for Artist: ${artist}`)
+    console.log(`Searching for Artist: ${artist}`);
 
     try {
       const response = this.httpService
-        .get(`https://musicbrainz.org/ws/2/artist/?query=${artist}`, { headers })
+        .get(`https://musicbrainz.org/ws/2/artist/?query=${artist}`, {
+          headers,
+        })
         .pipe();
 
       return (await lastValueFrom(response)).data.artists.map((artist) => ({
@@ -37,7 +38,7 @@ export class MusicBrainzClient {
         location: artist.area?.name,
       }));
     } catch (error) {
-      console.log(`Unable to call MusicBrainz for artist: ${artist}: ${error}`)
+      console.log(`Unable to call MusicBrainz for artist: ${artist}: ${error}`);
     }
   }
 }
