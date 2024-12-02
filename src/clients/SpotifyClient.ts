@@ -16,14 +16,13 @@ export type PlaylistMetadata = {
 
 @Injectable()
 export class SpotifyClient {
-  constructor(private readonly httpService: HttpService) {}
+  constructor(private readonly httpService: HttpService) { }
 
   async getUserIdByApiKey(apiKey: string): Promise<string> {
     const headers = {
       Authorization: `Bearer ${apiKey}`,
     };
 
-    // Setlist.FM automatically shows the most recent shows first.
     const response = await this.httpService
       .get(`https://api.spotify.com/v1/me`, { headers })
       .toPromise();
@@ -31,7 +30,7 @@ export class SpotifyClient {
   }
 
   //Get TrackID's by Artist Name and Track Names
-  async getTrackIdsbyArtistNameAndTrackNames(
+  async getTrackIdsbyArtistNameAndTrackName(
     averageSetlist: AverageSetlist,
     apiKey: string,
   ): Promise<PlaylistMetadata> {
@@ -42,30 +41,29 @@ export class SpotifyClient {
     try {
       const requests = averageSetlist.songs.map((song) =>
         this.httpService
-          .get(this.generateURL(song, averageSetlist.artistName), { headers })
+          .get(this.generateSpotifyTrackURL(song, averageSetlist.artistName), { headers })
           .toPromise(),
       );
 
+      // Rename these
       const foundTracks: MappedSongMetadata[] = [];
       const unfoundTracks: string[] = [];
 
+      console.log(`Getting requests for Spotify Track Urls for Artist`)
       const responses = await Promise.all(requests);
 
       responses.forEach((response) => {
+
         const track = response.data.tracks.items[0];
         if (track != null) {
           const trackMetadata: MappedSongMetadata = {
             songTitle: track.name,
             spotifySongId: track.id,
           };
+          console.log(`Pushing ${JSON.stringify(track.name)}`)
           foundTracks.push(trackMetadata);
         } else {
-          //@TODO - figure out something to do with medleys...
-          const urlParams = new URLSearchParams(response.data.tracks.href);
-          const queryParamValue = urlParams
-            .get(`${SPOTIFY_BASE_URL}?query`)
-            .match(/track:(.*?)\sartist:/)[1];
-          unfoundTracks.push(queryParamValue);
+          unfoundTracks.push("Unfound Song");
         }
       });
 
@@ -80,7 +78,7 @@ export class SpotifyClient {
     }
   }
 
-  generateURL(songTitle: string, artistTitle: string) {
+  generateSpotifyTrackURL(songTitle: string, artistTitle: string) {
     const url = `${SPOTIFY_BASE_URL}?q=track:${songTitle.replace(
       / /g,
       '+',
@@ -104,6 +102,7 @@ export class SpotifyClient {
         public: true,
       };
 
+      console.log(`Creating Playlist for ${playlistMetadata.artistName}`)
       const createPlaylistResponse = await this.httpService
         .post(
           `https://api.spotify.com/v1/users/${userId}/playlists`,
@@ -136,6 +135,7 @@ export class SpotifyClient {
 
       return response;
     } catch (error) {
+      console.log(error)
       return error;
     }
   }

@@ -15,7 +15,7 @@ export class PlaylistService {
     averageSetlist: AverageSetlist,
     apiKey: string,
   ) {
-    const res = await this.spotifyClient.getTrackIdsbyArtistNameAndTrackNames(
+    const res = await this.spotifyClient.getTrackIdsbyArtistNameAndTrackName(
       averageSetlist,
       apiKey,
     );
