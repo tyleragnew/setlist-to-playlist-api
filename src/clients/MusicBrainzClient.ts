@@ -9,10 +9,6 @@ export type ArtistMetadata = {
   mbid: string;
 };
 
-const headers = {
-  Accept: 'application/json',
-};
-
 @Injectable()
 export class MusicBrainzClient {
   constructor(private readonly httpService: HttpService) {}

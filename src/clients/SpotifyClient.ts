@@ -16,7 +16,7 @@ export type PlaylistMetadata = {
 
 @Injectable()
 export class SpotifyClient {
-  constructor(private readonly httpService: HttpService) { }
+  constructor(private readonly httpService: HttpService) {}
 
   async getUserIdByApiKey(apiKey: string): Promise<string> {
     const headers = {
@@ -41,7 +41,9 @@ export class SpotifyClient {
     try {
       const requests = averageSetlist.songs.map((song) =>
         this.httpService
-          .get(this.generateSpotifyTrackURL(song, averageSetlist.artistName), { headers })
+          .get(this.generateSpotifyTrackURL(song, averageSetlist.artistName), {
+            headers,
+          })
           .toPromise(),
       );
 
@@ -49,21 +51,20 @@ export class SpotifyClient {
       const foundTracks: MappedSongMetadata[] = [];
       const unfoundTracks: string[] = [];
 
-      console.log(`Getting requests for Spotify Track Urls for Artist`)
+      console.log(`Getting requests for Spotify Track Urls for Artist`);
       const responses = await Promise.all(requests);
 
       responses.forEach((response) => {
-
         const track = response.data.tracks.items[0];
         if (track != null) {
           const trackMetadata: MappedSongMetadata = {
             songTitle: track.name,
             spotifySongId: track.id,
           };
-          console.log(`Pushing ${JSON.stringify(track.name)}`)
+          console.log(`Pushing ${JSON.stringify(track.name)}`);
           foundTracks.push(trackMetadata);
         } else {
-          unfoundTracks.push("Unfound Song");
+          unfoundTracks.push('Unfound Song');
         }
       });
 
@@ -102,7 +103,7 @@ export class SpotifyClient {
         public: true,
       };
 
-      console.log(`Creating Playlist for ${playlistMetadata.artistName}`)
+      console.log(`Creating Playlist for ${playlistMetadata.artistName}`);
       const createPlaylistResponse = await this.httpService
         .post(
           `https://api.spotify.com/v1/users/${userId}/playlists`,
@@ -113,20 +114,6 @@ export class SpotifyClient {
 
       const playlistId = createPlaylistResponse.data.id;
 
-      const trackData = {
-        uris: playlistMetadata.mappedSongs.map(
-          (song) => `spotify:track:${song.spotifySongId}`,
-        ),
-      };
-
-      const modifyPlaylistResponse = await this.httpService
-        .put(
-          `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
-          trackData,
-          { headers },
-        )
-        .toPromise();
-
       const response = {
         playlistId: playlistId,
         embedURL: `https://open.spotify.com/embed/playlist/${playlistId}?utm_source=generator`,
@@ -135,7 +122,7 @@ export class SpotifyClient {
 
       return response;
     } catch (error) {
-      console.log(error)
+      console.log(error);
       return error;
     }
   }

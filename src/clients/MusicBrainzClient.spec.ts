@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { HttpService } from '@nestjs/axios';
-import { lastValueFrom, of } from 'rxjs';
+import { of } from 'rxjs';
 import { MusicBrainzClient, ArtistMetadata } from './MusicBrainzClient';
 
 describe('MusicBrainzClient', () => {
