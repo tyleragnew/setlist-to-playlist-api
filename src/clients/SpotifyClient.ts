@@ -47,7 +47,6 @@ export class SpotifyClient {
           .toPromise(),
       );
 
-      // Rename these
       const foundTracks: MappedSongMetadata[] = [];
       const unfoundTracks: string[] = [];
 
@@ -113,6 +112,20 @@ export class SpotifyClient {
         .toPromise();
 
       const playlistId = createPlaylistResponse.data.id;
+
+      const trackData = {
+        uris: playlistMetadata.mappedSongs.map(
+          (song) => `spotify:track:${song.spotifySongId}`,
+        ),
+      };
+
+      const modifyPlaylistResponse = await this.httpService
+        .put(
+          `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
+          trackData,
+          { headers },
+        )
+        .toPromise();
 
       const response = {
         playlistId: playlistId,
