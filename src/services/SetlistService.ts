@@ -17,7 +17,7 @@ export type AverageSetlist = {
 export class SetlistService {
   constructor(private readonly setlistFMClient: SetlistFMClient) {}
 
-  async getAverageSetlistByArtistName(artistId: string) {
+  async getAverageSetlistByArtistName(artistId: string, numberOfSets: number) {
     const setlistsByArtist = await this.setlistFMClient
       .getSetlistsByArtistName(artistId)
       .then((res) => {
@@ -83,9 +83,9 @@ export class SetlistService {
     let songStat: SongStat;
 
     // Loop through the list of sets and add to SongStat list
-    listOfSetlists.forEach((set) => {
+    listOfSetlists.forEach((set, setIndex, listOfSetlists) => {
       if (set.length > 0) {
-        set.forEach((song, songIndex) => {
+        set.forEach((song, songIndex, set) => {
           song = song.toUpperCase();
           // skip blank songs
           if (song === '') {
