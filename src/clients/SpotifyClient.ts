@@ -1,5 +1,6 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { AxiosError } from 'axios';
 import { SPOTIFY_BASE_URL } from '../constants';
 import { AverageSetlist } from '../services/SetlistService';
 
@@ -18,18 +19,48 @@ export type PlaylistMetadata = {
 export class SpotifyClient {
   constructor(private readonly httpService: HttpService) {}
 
+  private handleRequestError(error: unknown, context: string) {
+    // Log useful debug information
+    if ((error as AxiosError).isAxiosError) {
+      const axiosErr = error as AxiosError;
+      console.error(`${context} - AxiosError:`, {
+        message: axiosErr.message,
+        url: axiosErr.config?.url,
+        method: axiosErr.config?.method,
+        status: axiosErr.response?.status,
+        data: axiosErr.response?.data,
+      });
+      const status = axiosErr.response?.status || HttpStatus.BAD_GATEWAY;
+      const message = axiosErr.response?.data || axiosErr.message;
+      throw new HttpException({ error: message }, status);
+    }
+
+    // Unknown error
+    console.error(`${context} - Unknown error:`, error);
+    throw new HttpException(
+      'Internal Server Error',
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
+  }
+
   async getUserIdByApiKey(apiKey: string): Promise<string> {
     const headers = {
       Authorization: `Bearer ${apiKey}`,
     };
-
-    const response = await this.httpService
-      .get(`https://api.spotify.com/v1/me`, { headers })
-      .toPromise();
-    return response.data.id;
+    try {
+      const response = await this.httpService
+        .get(`https://api.spotify.com/v1/me`, { headers })
+        .toPromise();
+      return response.data.id;
+    } catch (error) {
+      this.handleRequestError(error, 'getUserIdByApiKey');
+    }
   }
 
-  //Get TrackID's by Artist Name and Track Names
+  /* 
+    Get Spotify TrackID's 
+    by Artist Name and Track Names 
+  */
   async getTrackIdsbyArtistNameAndTrackName(
     averageSetlist: AverageSetlist,
     apiKey: string,
@@ -73,8 +104,7 @@ export class SpotifyClient {
         unmappedSongs: unfoundTracks,
       };
     } catch (error) {
-      console.log(error);
-      return error;
+      this.handleRequestError(error, 'getTrackIdsbyArtistNameAndTrackName');
     }
   }
 
@@ -94,7 +124,6 @@ export class SpotifyClient {
     const headers = {
       Authorization: `Bearer ${apiKey}`,
     };
-
     try {
       const createPlaylistRequestBody = {
         name: `${playlistMetadata.artistName} Setlist`,
@@ -135,8 +164,7 @@ export class SpotifyClient {
 
       return response;
     } catch (error) {
-      console.log(error);
-      return error;
+      this.handleRequestError(error, 'createPlaylist');
     }
   }
 }
