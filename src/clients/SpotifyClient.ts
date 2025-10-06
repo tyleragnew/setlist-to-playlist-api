@@ -119,7 +119,7 @@ export class SpotifyClient {
         ),
       };
 
-      const modifyPlaylistResponse = await this.httpService
+      await this.httpService
         .put(
           `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
           trackData,

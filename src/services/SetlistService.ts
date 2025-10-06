@@ -44,11 +44,14 @@ export class SetlistService {
       (subArray: any[]) => subArray.length > 0,
     );
 
-    // const numberOfShowsToReturn =
-    //   numberOfSets < setsWithSongs.length ? numberOfSets : setsWithSongs.length;
+    // Determine how many shows to include in the average (use requested numberOfSets or available)
+    const numberOfShowsToReturn =
+      numberOfSets && numberOfSets > 0
+        ? Math.min(numberOfSets, setsWithSongs.length)
+        : setsWithSongs.length;
 
     const setlistMetadata: SetlistMetadata = {
-      setlists: setsWithSongs.slice(0, 5),
+      setlists: setsWithSongs.slice(0, numberOfShowsToReturn),
       artistName: setlistsByArtist.setlist[0].artist.name,
       mbid: setlistsByArtist.artistMBID,
     };
@@ -83,9 +86,9 @@ export class SetlistService {
     let songStat: SongStat;
 
     // Loop through the list of sets and add to SongStat list
-    listOfSetlists.forEach((set, setIndex, listOfSetlists) => {
+    listOfSetlists.forEach((set) => {
       if (set.length > 0) {
-        set.forEach((song, songIndex, set) => {
+        set.forEach((song, songIndex) => {
           song = song.toUpperCase();
           // skip blank songs
           if (song === '') {
