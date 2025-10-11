@@ -19,7 +19,7 @@ export class SetlistService {
 
   async getAverageSetlistByArtistName(artistId: string, numberOfSets: number) {
     const setlistsByArtist = await this.setlistFMClient
-      .getSetlistsByArtistName(artistId)
+      .getSetlistsByArtistName(artistId, numberOfSets)
       .then((res) => {
         return res;
       });

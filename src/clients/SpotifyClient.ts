@@ -17,7 +17,7 @@ export type PlaylistMetadata = {
 
 @Injectable()
 export class SpotifyClient {
-  constructor(private readonly httpService: HttpService) {}
+  constructor(private readonly httpService: HttpService) { }
 
   private handleRequestError(error: unknown, context: string) {
     // Log useful debug information
@@ -32,6 +32,21 @@ export class SpotifyClient {
       });
       const status = axiosErr.response?.status || HttpStatus.BAD_GATEWAY;
       const message = axiosErr.response?.data || axiosErr.message;
+      // Provide clearer guidance for 401s from Spotify
+      if (status === HttpStatus.UNAUTHORIZED) {
+        console.error(
+          `${context} - 401 Unauthorized from Spotify. Common causes: expired/invalid access token, using client-credentials token for user endpoints, or missing scopes (e.g. playlist-modify-public).`,
+        );
+        throw new HttpException(
+          {
+            error: 'Unauthorized: invalid or expired Spotify access token',
+            details: message,
+            hint: 'Ensure you pass a valid OAuth access token (Authorization Code flow) with required scopes (e.g. playlist-modify-public) and not a client-credentials token. Tokens expire after ~1 hour and must be refreshed.',
+          },
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+
       throw new HttpException({ error: message }, status);
     }
 
@@ -43,9 +58,15 @@ export class SpotifyClient {
     );
   }
 
+  private normalizeToken(apiKey: string) {
+    if (!apiKey) return apiKey;
+    return apiKey.replace(/^Bearer\s+/i, '').trim();
+  }
+
   async getUserIdByApiKey(apiKey: string): Promise<string> {
+    const token = this.normalizeToken(apiKey);
     const headers = {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${token}`,
     };
     try {
       const response = await this.httpService
@@ -65,8 +86,9 @@ export class SpotifyClient {
     averageSetlist: AverageSetlist,
     apiKey: string,
   ): Promise<PlaylistMetadata> {
+    const token = this.normalizeToken(apiKey);
     const headers = {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${token}`,
     };
 
     try {
@@ -121,8 +143,9 @@ export class SpotifyClient {
     playlistMetadata: PlaylistMetadata,
     apiKey: string,
   ) {
+    const token = this.normalizeToken(apiKey);
     const headers = {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${token}`,
     };
     try {
       const createPlaylistRequestBody = {
