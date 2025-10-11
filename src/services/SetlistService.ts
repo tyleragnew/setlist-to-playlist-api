@@ -19,13 +19,15 @@ export class SetlistService {
 
   async getAverageSetlistByArtistName(artistId: string, numberOfSets: number) {
     const setlistsByArtist = await this.setlistFMClient
-      .getSetlistsByArtistName(artistId, numberOfSets)
+      .getSetlistsByArtistName(artistId)
       .then((res) => {
         return res;
       });
 
     // Compile all sets
-    const sets = setlistsByArtist.setlist.map((obj) => obj.sets);
+    const sets = setlistsByArtist.setlist
+      .slice(0, numberOfSets)
+      .map((obj) => obj.sets);
 
     const songs: string[][] = [];
 
