@@ -15,13 +15,16 @@ const headers = {
 
 @Injectable()
 export class SetlistFMClient {
-  constructor(private readonly httpService: HttpService) { }
-
+  constructor(private readonly httpService: HttpService) {}
   async getSetlistsByArtistName(artistMBID: string, numberOfSets: number) {
     try {
       // Setlist.FM automatically shows the most recent shows first.
       const response = await this.httpService
-        .get(SETLIST_FM_BASE_URL + `artist/${artistMBID}/setlists?p=${numberOfSets}`, { headers })
+        .get(
+          SETLIST_FM_BASE_URL +
+            `artist/${artistMBID}/setlists?p=${numberOfSets}`,
+          { headers },
+        )
         .toPromise();
       return response.data;
     } catch (error) {

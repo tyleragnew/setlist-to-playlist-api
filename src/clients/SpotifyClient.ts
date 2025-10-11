@@ -17,7 +17,7 @@ export type PlaylistMetadata = {
 
 @Injectable()
 export class SpotifyClient {
-  constructor(private readonly httpService: HttpService) { }
+  constructor(private readonly httpService: HttpService) {}
 
   private handleRequestError(error: unknown, context: string) {
     // Log useful debug information
