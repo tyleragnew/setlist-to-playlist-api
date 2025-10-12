@@ -3,7 +3,7 @@ import { PlaylistService } from '../services/PlaylistService';
 
 @Controller('playlists')
 export class PlaylistController {
-  constructor(private readonly playlistService: PlaylistService) {}
+  constructor(private readonly playlistService: PlaylistService) { }
 
   @Post()
   async createPlaylist(
@@ -18,7 +18,6 @@ export class PlaylistController {
         return res;
       });
 
-    // @TODO - surface this draft data? Or just let it rip?
     const playlistMetadata = await this.playlistService
       .putTogetherPlaylistDraftFromAverageSetlist(requestBody, apiKey)
       .then((res) => {

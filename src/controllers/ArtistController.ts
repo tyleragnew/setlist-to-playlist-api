@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, Headers } from '@nestjs/common';
 import { ArtistService } from '../services/ArtistService';
 
 @Controller('artists')
@@ -14,5 +14,14 @@ export class ArtistController {
   @Get()
   getArtistIdsByName(@Query('artist') artist: string) {
     return this.artistService.getArtistIdsByName(artist);
+  }
+
+  @Get('image')
+  getArtistImageByName(
+    @Query('artist') artist: string, 
+    @Headers() headers: Record<string, string>,
+  ) {
+    const apiKey = headers['api-key'];
+    return this.artistService.getArtistImageByName(artist, apiKey);
   }
 }

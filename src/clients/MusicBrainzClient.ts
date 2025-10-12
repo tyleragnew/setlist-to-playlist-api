@@ -32,6 +32,7 @@ export class MusicBrainzClient {
         description: artist.disambiguation,
         mbid: artist.id,
         location: artist.area?.name,
+        imageURL: artist.imageURL
       }));
     } catch (error) {
       console.log(`Unable to call MusicBrainz for artist: ${artist}: ${error}`);
