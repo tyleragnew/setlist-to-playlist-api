@@ -18,7 +18,7 @@ export type PlaylistMetadata = {
 
 @Injectable()
 export class SpotifyClient {
-  constructor(private readonly httpService: HttpService) {}
+  constructor(private readonly httpService: HttpService) { }
 
   private handleRequestError(error: unknown, context: string) {
     // Log useful debug information
@@ -107,17 +107,17 @@ export class SpotifyClient {
       console.log(`Getting requests for Spotify Track Urls for Artist`);
       const responses = await Promise.all(requests);
 
-      responses.forEach((response) => {
+      responses.forEach((response, idx) => {
         const track = response.data.tracks.items[0];
         if (track != null) {
           const trackMetadata: MappedSongMetadata = {
             songTitle: track.name,
             spotifySongId: track.id,
           };
-          console.log(`Pushing ${JSON.stringify(track.name)}`);
           foundTracks.push(trackMetadata);
         } else {
-          unfoundTracks.push('Unfound Song');
+          // Push the actual song title that was not found
+          unfoundTracks.push(averageSetlist.songs[idx]);
         }
       });
 
