@@ -4,10 +4,16 @@ import { SpotifyClient } from 'src/clients/SpotifyClient';
 
 @Injectable()
 export class ArtistService {
-  constructor(private readonly musicBrainzClient: MusicBrainzClient, private readonly spotifyClient: SpotifyClient) {}
+  constructor(
+    private readonly musicBrainzClient: MusicBrainzClient,
+    private readonly spotifyClient: SpotifyClient,
+  ) {}
 
   getArtistImageByName(artist: string, apiKey: string) {
-    const spotifyArtistID = this.spotifyClient.getArtistImageByArtistName(artist, apiKey);
+    const spotifyArtistID = this.spotifyClient.getArtistImageByArtistName(
+      artist,
+      apiKey,
+    );
     return spotifyArtistID;
   }
 

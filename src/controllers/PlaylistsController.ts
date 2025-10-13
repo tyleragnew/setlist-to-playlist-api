@@ -3,7 +3,7 @@ import { PlaylistService } from '../services/PlaylistService';
 
 @Controller('playlists')
 export class PlaylistController {
-  constructor(private readonly playlistService: PlaylistService) { }
+  constructor(private readonly playlistService: PlaylistService) {}
 
   @Post()
   async createPlaylist(

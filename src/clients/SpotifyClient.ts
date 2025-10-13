@@ -1,7 +1,7 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { AxiosError } from 'axios';
-import { SPOTIFY_BASE_URL, X_API_KEY } from '../constants';
+import { SPOTIFY_BASE_URL } from '../constants';
 import { AverageSetlist } from '../services/SetlistService';
 import { lastValueFrom } from 'rxjs';
 
@@ -18,7 +18,7 @@ export type PlaylistMetadata = {
 
 @Injectable()
 export class SpotifyClient {
-  constructor(private readonly httpService: HttpService) { }
+  constructor(private readonly httpService: HttpService) {}
 
   private handleRequestError(error: unknown, context: string) {
     // Log useful debug information
@@ -200,12 +200,11 @@ export class SpotifyClient {
     return lastValueFrom(
       this.httpService.get(
         `https://api.spotify.com/v1/search?q=${artistName}&type=artist`,
-        { headers }
-      )
-    ).then(response => {
+        { headers },
+      ),
+    ).then((response) => {
       const artistImageURL = response.data.artists.items[0]?.images[0]?.url;
       return artistImageURL;
-    }
-    );
+    });
   }
 }

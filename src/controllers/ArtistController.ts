@@ -18,7 +18,7 @@ export class ArtistController {
 
   @Get('image')
   getArtistImageByName(
-    @Query('artist') artist: string, 
+    @Query('artist') artist: string,
     @Headers() headers: Record<string, string>,
   ) {
     const apiKey = headers['api-key'];
