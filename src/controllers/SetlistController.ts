@@ -9,11 +9,17 @@ export class SetlistsController {
   async findSetlistsByMBID(
     @Query('artistMBID') artistMBID: string,
     @Query('numberOfSets') numberOfSets: number,
+    @Query('allSongs') allSongs?: string,
   ) {
     return await this.setlistService
-      .getAverageSetlistByArtistName(artistMBID, numberOfSets)
+      .getAverageSetlistByArtistName(artistMBID, numberOfSets, allSongs === 'true')
       .then((res) => {
         return res;
       });
+  }
+
+  @Get('meta')
+  async getArtistShowMeta(@Query('artistMBID') artistMBID: string) {
+    return await this.setlistService.getArtistShowMeta(artistMBID);
   }
 }
