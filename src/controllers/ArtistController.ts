@@ -17,11 +17,11 @@ export class ArtistController {
   }
 
   @Get('image')
-  getArtistImageByName(
+  getArtistMetadataByName(
     @Query('artist') artist: string,
     @Headers() headers: Record<string, string>,
   ) {
     const apiKey = headers['api-key'];
-    return this.artistService.getArtistImageByName(artist, apiKey);
+    return this.artistService.getArtistMetadataByName(artist, apiKey);
   }
 }

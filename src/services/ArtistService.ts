@@ -9,7 +9,7 @@ export class ArtistService {
     private readonly spotifyClient: SpotifyClient,
   ) {}
 
-  getArtistImageByName(artist: string, apiKey: string) {
+  getArtistMetadataByName(artist: string, apiKey: string) {
     const spotifyArtistID = this.spotifyClient.getArtistImageByArtistName(
       artist,
       apiKey,
