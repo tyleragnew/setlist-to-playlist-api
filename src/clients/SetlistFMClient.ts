@@ -5,6 +5,7 @@ import { SETLIST_FM_BASE_URL, X_API_KEY } from '../constants';
 export type SongEntry = {
   title: string;
   coverArtist?: string;
+  tape?: boolean;
 };
 
 export type SetlistMetadata = {
@@ -31,5 +32,103 @@ export class SetlistFMClient {
     } catch (error) {
       console.log(error);
     }
+  }
+
+  async searchSetlistsByTour(
+    artistMBID: string,
+    tourName: string,
+  ): Promise<any> {
+    return this.paginateSearch({
+      artistMbid: artistMBID,
+      tourName,
+    });
+  }
+
+  async searchSetlistsByYear(artistMBID: string, year: number): Promise<any> {
+    return this.paginateSearch({
+      artistMbid: artistMBID,
+      year: String(year),
+    });
+  }
+
+  async getArtistSetlistYearRange(
+    artistMBID: string,
+  ): Promise<{ beginYear: number | null; endYear: number | null }> {
+    try {
+      // Page 1 gives us the most recent shows
+      const firstPage = await this.httpService
+        .get(SETLIST_FM_BASE_URL + `artist/${artistMBID}/setlists?p=1`, {
+          headers,
+        })
+        .toPromise();
+
+      const total = firstPage.data?.total ?? 0;
+      const itemsPerPage = firstPage.data?.itemsPerPage ?? 20;
+      const firstSetlists = firstPage.data?.setlist ?? [];
+
+      if (total === 0 || firstSetlists.length === 0) {
+        return { beginYear: null, endYear: null };
+      }
+
+      // Extract year from dd-MM-yyyy format
+      const getYear = (dateStr: string) => Number(dateStr.split('-')[2]);
+
+      // Most recent year from page 1
+      const endYear = getYear(firstSetlists[0].eventDate);
+
+      // Fetch last page to get the oldest show
+      const lastPageNum = Math.ceil(total / itemsPerPage);
+      let beginYear = endYear;
+
+      if (lastPageNum > 1) {
+        const lastPage = await this.httpService
+          .get(
+            SETLIST_FM_BASE_URL +
+              `artist/${artistMBID}/setlists?p=${lastPageNum}`,
+            { headers },
+          )
+          .toPromise();
+
+        const lastSetlists = lastPage.data?.setlist ?? [];
+        if (lastSetlists.length > 0) {
+          beginYear = getYear(lastSetlists[lastSetlists.length - 1].eventDate);
+        }
+      }
+
+      return { beginYear, endYear };
+    } catch (error) {
+      console.error('Error fetching setlist year range:', error);
+      return { beginYear: null, endYear: null };
+    }
+  }
+
+  private async paginateSearch(
+    params: Record<string, string>,
+  ): Promise<{ setlist: any[] }> {
+    const allSetlists: any[] = [];
+    let page = 1;
+    let total = 0;
+
+    do {
+      const response = await this.httpService
+        .get(SETLIST_FM_BASE_URL + 'search/setlists', {
+          headers,
+          params: { ...params, p: String(page) },
+        })
+        .toPromise();
+
+      const data = response.data;
+      const setlists = data?.setlist ?? [];
+      allSetlists.push(...setlists);
+      total = data?.total ?? 0;
+      page++;
+
+      // Small delay to respect rate limits
+      if (page * 20 < total) {
+        await new Promise((r) => setTimeout(r, 500));
+      }
+    } while (allSetlists.length < total);
+
+    return { setlist: allSetlists };
   }
 }

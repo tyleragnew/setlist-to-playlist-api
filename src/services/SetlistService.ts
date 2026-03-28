@@ -10,15 +10,22 @@ export { SongEntry };
 type SongStat = {
   title: string;
   coverArtist?: string;
+  tape?: boolean;
   occurrences: number;
   position: number[];
 };
+
+export type SearchMode =
+  | { mode: 'recent'; numberOfSets: number }
+  | { mode: 'tour'; tourName: string }
+  | { mode: 'year'; year: number };
 
 export type AverageSetlist = {
   artistName: string;
   averageSetLength: number;
   songs: SongEntry[];
   similarity: number;
+  playlistDescription?: string;
 };
 
 export type ShowInfo = {
@@ -33,6 +40,8 @@ export type ArtistShowMeta = {
   artistName: string;
   currentTour: string | null;
   recentShows: ShowInfo[];
+  beginYear: number | null;
+  endYear: number | null;
 };
 
 @Injectable()
@@ -40,7 +49,10 @@ export class SetlistService {
   constructor(private readonly setlistFMClient: SetlistFMClient) {}
 
   async getArtistShowMeta(artistId: string): Promise<ArtistShowMeta> {
-    const data = await this.setlistFMClient.getSetlistsByArtistName(artistId);
+    const [data, activeYears] = await Promise.all([
+      this.setlistFMClient.getSetlistsByArtistName(artistId),
+      this.setlistFMClient.getArtistSetlistYearRange(artistId),
+    ]);
     const setlists = data?.setlist ?? [];
 
     const today = new Date();
@@ -89,6 +101,8 @@ export class SetlistService {
       artistName,
       currentTour,
       recentShows: recent,
+      beginYear: activeYears.beginYear,
+      endYear: activeYears.endYear,
     };
   }
 
@@ -97,29 +111,61 @@ export class SetlistService {
     numberOfSets: number,
     allSongs = false,
   ) {
-    const setlistsByArtist = await this.setlistFMClient
-      .getSetlistsByArtistName(artistId)
-      .then((res) => {
-        return res;
-      });
+    return this.getAverageSetlist(
+      artistId,
+      { mode: 'recent', numberOfSets },
+      allSongs,
+    );
+  }
+
+  async getAverageSetlist(
+    artistId: string,
+    searchMode: SearchMode,
+    allSongs = false,
+  ): Promise<AverageSetlist> {
+    let rawData: any;
+
+    switch (searchMode.mode) {
+      case 'recent':
+        rawData = await this.setlistFMClient.getSetlistsByArtistName(artistId);
+        break;
+      case 'tour':
+        rawData = await this.setlistFMClient.searchSetlistsByTour(
+          artistId,
+          searchMode.tourName,
+        );
+        break;
+      case 'year':
+        rawData = await this.setlistFMClient.searchSetlistsByYear(
+          artistId,
+          searchMode.year,
+        );
+        break;
+    }
+
+    const rawSetlists = rawData?.setlist ?? [];
+    const sliceCount =
+      searchMode.mode === 'recent'
+        ? searchMode.numberOfSets
+        : rawSetlists.length;
 
     // Compile all sets
-    const sets = setlistsByArtist.setlist
-      .slice(0, numberOfSets)
-      .map((obj) => obj.sets);
+    const sets = rawSetlists.slice(0, sliceCount).map((obj: any) => obj.sets);
 
     const songs: SongEntry[][] = [];
 
     for (let x = 0; x < sets.length; x++) {
       // Get songs from the main set and encores in a single list
-      const rawSongs = sets[x].set.map((i) => i.song).flat();
+      const rawSongs = sets[x].set.map((i: any) => i.song).flat();
       songs.push(
         rawSongs
-          .filter((s) => s.name && s.name.trim())
-          .map((s) => {
+          .filter((s: any) => s.name && s.name.trim())
+          .map((s: any) => {
             const entry: SongEntry = { title: s.name.trim() };
-            // If it's a tape cover, preserve the original artist for Spotify search
-            if (s.tape && s.cover?.name) {
+            if (s.tape) {
+              entry.tape = true;
+            }
+            if (s.cover?.name) {
               entry.coverArtist = s.cover.name;
             }
             return entry;
@@ -132,16 +178,12 @@ export class SetlistService {
       (subArray: any[]) => subArray.length > 0,
     );
 
-    // Determine how many shows to include in the average (use requested numberOfSets or available)
-    const numberOfShowsToReturn =
-      numberOfSets && numberOfSets > 0
-        ? Math.min(numberOfSets, setsWithSongs.length)
-        : setsWithSongs.length;
+    const artistName = rawSetlists[0]?.artist?.name ?? '';
 
     const setlistMetadata: SetlistMetadata = {
-      setlists: setsWithSongs.slice(0, numberOfShowsToReturn),
-      artistName: setlistsByArtist.setlist[0].artist.name,
-      mbid: setlistsByArtist.artistMBID,
+      setlists: setsWithSongs,
+      artistName,
+      mbid: artistId,
     };
 
     let setlistLength = 0;
@@ -166,6 +208,7 @@ export class SetlistService {
       ).map((i) => {
         const entry: SongEntry = { title: i.title };
         if (i.coverArtist) entry.coverArtist = i.coverArtist;
+        if (i.tape) entry.tape = true;
         return entry;
       }),
       similarity: this.calculateSetlistSimilarity(setlistMetadata.setlists),
@@ -199,6 +242,7 @@ export class SetlistService {
               position: [songIndex + 1],
             };
             if (songEntry.coverArtist) stat.coverArtist = songEntry.coverArtist;
+            if (songEntry.tape) stat.tape = true;
             songStats.push(stat);
           }
         });

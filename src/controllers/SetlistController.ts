@@ -1,5 +1,5 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { SetlistService } from '../services/SetlistService';
+import { SearchMode, SetlistService } from '../services/SetlistService';
 
 @Controller('setlists')
 export class SetlistsController {
@@ -8,18 +8,34 @@ export class SetlistsController {
   @Get()
   async findSetlistsByMBID(
     @Query('artistMBID') artistMBID: string,
-    @Query('numberOfSets') numberOfSets: number,
+    @Query('mode') mode?: string,
+    @Query('numberOfSets') numberOfSets?: string,
     @Query('allSongs') allSongs?: string,
+    @Query('tourName') tourName?: string,
+    @Query('year') year?: string,
   ) {
-    return await this.setlistService
-      .getAverageSetlistByArtistName(
-        artistMBID,
-        numberOfSets,
-        allSongs === 'true',
-      )
-      .then((res) => {
-        return res;
-      });
+    let searchMode: SearchMode;
+
+    switch (mode) {
+      case 'tour':
+        searchMode = { mode: 'tour', tourName: tourName ?? '' };
+        break;
+      case 'year':
+        searchMode = { mode: 'year', year: Number(year) };
+        break;
+      default:
+        searchMode = {
+          mode: 'recent',
+          numberOfSets: Number(numberOfSets) || 10,
+        };
+        break;
+    }
+
+    return await this.setlistService.getAverageSetlist(
+      artistMBID,
+      searchMode,
+      allSongs === 'true',
+    );
   }
 
   @Get('meta')

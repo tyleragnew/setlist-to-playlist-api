@@ -14,6 +14,7 @@ export type PlaylistMetadata = {
   artistName: string;
   mappedSongs: MappedSongMetadata[];
   unmappedSongs: string[];
+  playlistDescription?: string;
 };
 
 @Injectable()
@@ -129,22 +130,13 @@ export class SpotifyClient {
         }
       });
 
-      // Search for main artist songs
-      const mainRequests = mainSongs.map(({ song }) =>
+      // Search ALL songs by the chosen artist first
+      const allRequests = averageSetlist.songs.map((song) =>
         this.httpService
           .get(
             this.generateSpotifyTrackURL(song.title, averageSetlist.artistName),
             { headers },
           )
-          .toPromise(),
-      );
-
-      // Search for cover songs using the original artist
-      const coverRequests = coverSongs.map(({ song }) =>
-        this.httpService
-          .get(this.generateSpotifyTrackURL(song.title, song.coverArtist), {
-            headers,
-          })
           .toPromise(),
       );
 
@@ -154,19 +146,16 @@ export class SpotifyClient {
       console.log(
         `Searching Spotify tracks for artist "${averageSetlist.artistName}"` +
           (coverSongs.length
-            ? ` (${coverSongs.length} tape cover(s) will use original artist)`
+            ? ` (${coverSongs.length} cover(s) will fall back to original artist if needed)`
             : ''),
       );
 
-      const [mainResponses, coverResponses] = await Promise.all([
-        Promise.all(mainRequests),
-        Promise.all(coverRequests),
-      ]);
+      const allResponses = await Promise.all(allRequests);
 
       // Collect all Spotify artist IDs that appear in results for the main artist,
       // then use the most frequent one to verify matches
       const artistIdCounts = new Map<string, number>();
-      mainResponses.forEach((response) => {
+      allResponses.forEach((response) => {
         for (const item of response.data.tracks.items) {
           for (const a of item.artists) {
             if (
@@ -192,28 +181,70 @@ export class SpotifyClient {
         `Resolved Spotify artist ID: ${artistId} (appeared ${maxCount} times across results)`,
       );
 
-      // Build results array in original order
-      const results: { items: any[]; song: SongEntry }[] = new Array(
-        averageSetlist.songs.length,
-      );
+      // For cover songs that didn't match the chosen artist, fall back to original artist
+      const coverFallbackIndices: number[] = [];
+      const coverFallbackRequests: Promise<any>[] = [];
 
-      mainSongs.forEach(({ idx, song }, i) => {
-        results[idx] = { items: mainResponses[i].data.tracks.items, song };
-      });
-      coverSongs.forEach(({ idx, song }, i) => {
-        results[idx] = { items: coverResponses[i].data.tracks.items, song };
+      coverSongs.forEach(({ idx, song }) => {
+        const items = allResponses[idx].data.tracks.items;
+        // Check if the chosen artist actually has this track
+        // Use artist ID if resolved, otherwise match by name
+        const match = artistId
+          ? items.find((item: any) =>
+              item.artists.some((a: any) => a.id === artistId),
+            )
+          : items.find((item: any) =>
+              item.artists.some(
+                (a: any) =>
+                  a.name.toLowerCase() ===
+                  averageSetlist.artistName.toLowerCase(),
+              ),
+            );
+        if (!match) {
+          console.log(
+            `[COVER FALLBACK] "${song.title}" not found for ${averageSetlist.artistName}, trying ${song.coverArtist}`,
+          );
+          coverFallbackIndices.push(idx);
+          coverFallbackRequests.push(
+            this.httpService
+              .get(this.generateSpotifyTrackURL(song.title, song.coverArtist), {
+                headers,
+              })
+              .toPromise(),
+          );
+        }
       });
 
-      results.forEach(({ items, song }) => {
+      const coverFallbackResponses = coverFallbackRequests.length
+        ? await Promise.all(coverFallbackRequests)
+        : [];
+
+      // Merge fallback results into allResponses
+      coverFallbackIndices.forEach((idx, i) => {
+        allResponses[idx] = coverFallbackResponses[i];
+      });
+
+      // Build final results
+      averageSetlist.songs.forEach((song, idx) => {
+        const items = allResponses[idx].data.tracks.items;
         let track;
-        if (song.coverArtist) {
-          // For covers, just take the first result (searched by original artist already)
+
+        if (coverFallbackIndices.includes(idx)) {
+          // This was a cover fallback — take first result from original artist search
           track = items[0];
         } else {
-          // For main artist songs, verify against resolved artist ID
+          // Verify against resolved artist ID, or match by name if no ID resolved
           track = artistId
-            ? items.find((item) => item.artists.some((a) => a.id === artistId))
-            : items[0];
+            ? items.find((item: any) =>
+                item.artists.some((a: any) => a.id === artistId),
+              )
+            : items.find((item: any) =>
+                item.artists.some(
+                  (a: any) =>
+                    a.name.toLowerCase() ===
+                    averageSetlist.artistName.toLowerCase(),
+                ),
+              );
         }
 
         if (track != null) {
@@ -235,6 +266,7 @@ export class SpotifyClient {
         artistName: averageSetlist.artistName,
         mappedSongs: foundTracks,
         unmappedSongs: unfoundTracks,
+        playlistDescription: averageSetlist.playlistDescription,
       };
     } catch (error) {
       this.handleRequestError(error, 'getTrackIdsbyArtistNameAndTrackName');
@@ -257,9 +289,13 @@ export class SpotifyClient {
       Authorization: `Bearer ${token}`,
     };
     try {
+      const description =
+        playlistMetadata.playlistDescription ??
+        `A representative setlist for ${playlistMetadata.artistName}. Generated by Setlist2Playlist App`;
+
       const createPlaylistRequestBody = {
         name: `${playlistMetadata.artistName} Setlist`,
-        description: `A representative setlist for ${playlistMetadata.artistName}. Generated by Setlist2Playlist App`,
+        description: `${description} | Generated by Setlist2Playlist`,
         public: true,
       };
 
