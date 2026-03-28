@@ -1,8 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import { SetlistFMClient, SetlistMetadata } from '../clients/SetlistFMClient';
+import {
+  SetlistFMClient,
+  SetlistMetadata,
+  SongEntry,
+} from '../clients/SetlistFMClient';
+
+export { SongEntry };
 
 type SongStat = {
   title: string;
+  coverArtist?: string;
   occurrences: number;
   position: number[];
 };
@@ -10,7 +17,7 @@ type SongStat = {
 export type AverageSetlist = {
   artistName: string;
   averageSetLength: number;
-  songs: string[];
+  songs: SongEntry[];
   similarity: number;
 };
 
@@ -95,15 +102,24 @@ export class SetlistService {
       .slice(0, numberOfSets)
       .map((obj) => obj.sets);
 
-    const songs: string[][] = [];
+    const songs: SongEntry[][] = [];
 
     for (let x = 0; x < sets.length; x++) {
       // Get songs from the main set and encores in a single list
+      const rawSongs = sets[x].set
+        .map((i) => i.song)
+        .flat();
       songs.push(
-        sets[x].set
-          .map((i) => i.song)
-          .flat()
-          .map((x) => x.name.trim()),
+        rawSongs
+          .filter((s) => s.name && s.name.trim())
+          .map((s) => {
+            const entry: SongEntry = { title: s.name.trim() };
+            // If it's a tape cover, preserve the original artist for Spotify search
+            if (s.tape && s.cover?.name) {
+              entry.coverArtist = s.cover.name;
+            }
+            return entry;
+          }),
       );
     }
 
@@ -143,39 +159,43 @@ export class SetlistService {
       songs: this.compileSongStats(
         setlistMetadata.setlists,
         allSongs ? Infinity : averageSetListLength,
-      ).map((i) => i.title),
+      ).map((i) => {
+        const entry: SongEntry = { title: i.title };
+        if (i.coverArtist) entry.coverArtist = i.coverArtist;
+        return entry;
+      }),
       similarity: this.calculateSetlistSimilarity(setlistMetadata.setlists),
     };
 
     return averageSetlist;
   }
 
-  compileSongStats(listOfSetlists: string[][], numberOfSongs: number) {
+  compileSongStats(listOfSetlists: SongEntry[][], numberOfSongs: number) {
     const songStats: SongStat[] = [];
-    let songStat: SongStat;
 
     // Loop through the list of sets and add to SongStat list
     listOfSetlists.forEach((set) => {
       if (set.length > 0) {
-        set.forEach((song, songIndex) => {
-          song = song.toUpperCase();
+        set.forEach((songEntry, songIndex) => {
+          const title = songEntry.title.toUpperCase();
           // skip blank songs
-          if (song === '') {
+          if (title === '') {
           }
           // check if exists, if it does update
-          else if (songStats.some((obj) => obj.title === song)) {
-            const indexId = songStats.findIndex((obj) => obj.title === song);
-            songStats[indexId].occurrences++,
-              songStats[indexId].position.push(songIndex + 1);
+          else if (songStats.some((obj) => obj.title === title)) {
+            const indexId = songStats.findIndex((obj) => obj.title === title);
+            songStats[indexId].occurrences++;
+            songStats[indexId].position.push(songIndex + 1);
           }
           // else create
           else {
-            songStat = {
-              title: song,
+            const stat: SongStat = {
+              title,
               occurrences: 1,
               position: [songIndex + 1],
             };
-            songStats.push(songStat);
+            if (songEntry.coverArtist) stat.coverArtist = songEntry.coverArtist;
+            songStats.push(stat);
           }
         });
       }
@@ -191,11 +211,11 @@ export class SetlistService {
     );
   }
 
-  calculateSetlistSimilarity(setlists: string[][]): number {
+  calculateSetlistSimilarity(setlists: SongEntry[][]): number {
     if (setlists.length < 2) return 100;
 
     const normalizedSets = setlists.map(
-      (set) => new Set(set.map((s) => s.toUpperCase())),
+      (set) => new Set(set.map((s) => s.title.toUpperCase())),
     );
 
     let totalSimilarity = 0;

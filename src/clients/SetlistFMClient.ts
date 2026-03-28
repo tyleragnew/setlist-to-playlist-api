@@ -2,10 +2,15 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { SETLIST_FM_BASE_URL, X_API_KEY } from '../constants';
 
+export type SongEntry = {
+  title: string;
+  coverArtist?: string;
+};
+
 export type SetlistMetadata = {
   artistName: string;
   mbid: string;
-  setlists: string[][];
+  setlists: SongEntry[][];
 };
 
 const headers = {

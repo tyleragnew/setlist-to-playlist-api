@@ -2,7 +2,7 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { AxiosError } from 'axios';
 import { SPOTIFY_BASE_URL } from '../constants';
-import { AverageSetlist } from '../services/SetlistService';
+import { AverageSetlist, SongEntry } from '../services/SetlistService';
 import { lastValueFrom } from 'rxjs';
 
 type MappedSongMetadata = {
@@ -79,9 +79,31 @@ export class SpotifyClient {
     }
   }
 
-  /* 
-    Get Spotify TrackID's 
-    by Artist Name and Track Names 
+  async getArtistIdByName(
+    artistName: string,
+    apiKey: string,
+  ): Promise<string | null> {
+    const token = this.normalizeToken(apiKey);
+    const headers = {
+      Authorization: `Bearer ${token}`,
+    };
+    try {
+      const response = await lastValueFrom(
+        this.httpService.get(
+          `https://api.spotify.com/v1/search?q=${encodeURIComponent(artistName)}&type=artist&limit=1`,
+          { headers },
+        ),
+      );
+      return response.data.artists.items[0]?.id ?? null;
+    } catch (error) {
+      this.handleRequestError(error, 'getArtistIdByName');
+    }
+  }
+
+  /*
+    Get Spotify TrackID's
+    by resolving the Artist ID, then searching tracks and
+    verifying results belong to the correct artist.
   */
   async getTrackIdsbyArtistNameAndTrackName(
     averageSetlist: AverageSetlist,
@@ -93,31 +115,118 @@ export class SpotifyClient {
     };
 
     try {
-      const requests = averageSetlist.songs.map((song) =>
+      // Separate songs into main artist songs and cover songs (tape covers)
+      const mainSongs: { song: SongEntry; idx: number }[] = [];
+      const coverSongs: { song: SongEntry; idx: number }[] = [];
+
+      averageSetlist.songs.forEach((song, idx) => {
+        if (song.coverArtist) {
+          coverSongs.push({ song, idx });
+        } else {
+          mainSongs.push({ song, idx });
+        }
+      });
+
+      // Search for main artist songs
+      const mainRequests = mainSongs.map(({ song }) =>
         this.httpService
-          .get(this.generateSpotifyTrackURL(song, averageSetlist.artistName), {
-            headers,
-          })
+          .get(
+            this.generateSpotifyTrackURL(song.title, averageSetlist.artistName),
+            { headers },
+          )
+          .toPromise(),
+      );
+
+      // Search for cover songs using the original artist
+      const coverRequests = coverSongs.map(({ song }) =>
+        this.httpService
+          .get(
+            this.generateSpotifyTrackURL(song.title, song.coverArtist),
+            { headers },
+          )
           .toPromise(),
       );
 
       const foundTracks: MappedSongMetadata[] = [];
       const unfoundTracks: string[] = [];
 
-      console.log(`Getting requests for Spotify Track Urls for Artist`);
-      const responses = await Promise.all(requests);
+      console.log(
+        `Searching Spotify tracks for artist "${averageSetlist.artistName}"` +
+          (coverSongs.length
+            ? ` (${coverSongs.length} tape cover(s) will use original artist)`
+            : ''),
+      );
 
-      responses.forEach((response, idx) => {
-        const track = response.data.tracks.items[0];
+      const [mainResponses, coverResponses] = await Promise.all([
+        Promise.all(mainRequests),
+        Promise.all(coverRequests),
+      ]);
+
+      // Collect all Spotify artist IDs that appear in results for the main artist,
+      // then use the most frequent one to verify matches
+      const artistIdCounts = new Map<string, number>();
+      mainResponses.forEach((response) => {
+        for (const item of response.data.tracks.items) {
+          for (const a of item.artists) {
+            if (
+              a.name.toLowerCase() === averageSetlist.artistName.toLowerCase()
+            ) {
+              artistIdCounts.set(a.id, (artistIdCounts.get(a.id) || 0) + 1);
+            }
+          }
+        }
+      });
+
+      // The most common artist ID across all results is the correct one
+      let artistId: string | null = null;
+      let maxCount = 0;
+      for (const [id, count] of artistIdCounts) {
+        if (count > maxCount) {
+          artistId = id;
+          maxCount = count;
+        }
+      }
+
+      console.log(
+        `Resolved Spotify artist ID: ${artistId} (appeared ${maxCount} times across results)`,
+      );
+
+      // Build results array in original order
+      const results: { items: any[]; song: SongEntry }[] = new Array(
+        averageSetlist.songs.length,
+      );
+
+      mainSongs.forEach(({ idx, song }, i) => {
+        results[idx] = { items: mainResponses[i].data.tracks.items, song };
+      });
+      coverSongs.forEach(({ idx, song }, i) => {
+        results[idx] = { items: coverResponses[i].data.tracks.items, song };
+      });
+
+      results.forEach(({ items, song }) => {
+        let track;
+        if (song.coverArtist) {
+          // For covers, just take the first result (searched by original artist already)
+          track = items[0];
+        } else {
+          // For main artist songs, verify against resolved artist ID
+          track = artistId
+            ? items.find((item) =>
+                item.artists.some((a) => a.id === artistId),
+              )
+            : items[0];
+        }
+
         if (track != null) {
-          const trackMetadata: MappedSongMetadata = {
+          foundTracks.push({
             songTitle: track.name,
             spotifySongId: track.id,
-          };
-          foundTracks.push(trackMetadata);
+          });
         } else {
-          // Push the actual song title that was not found
-          unfoundTracks.push(averageSetlist.songs[idx]);
+          console.log(
+            `[UNMAPPED] "${song.title}"${song.coverArtist ? ` (cover of ${song.coverArtist})` : ''} - ${items.length} results`,
+          );
+          unfoundTracks.push(song.title);
         }
       });
 
@@ -131,12 +240,10 @@ export class SpotifyClient {
     }
   }
 
-  generateSpotifyTrackURL(songTitle: string, artistTitle: string) {
-    const url = `${SPOTIFY_BASE_URL}?q=track:${songTitle.replace(
-      / /g,
-      '+',
-    )} artist:${artistTitle.replace(/ /g, '+')}&type=track&offset=0&limit=1`;
-    return url;
+  generateSpotifyTrackURL(songTitle: string, artistName: string) {
+    const encodedTrack = encodeURIComponent(songTitle);
+    const encodedArtist = encodeURIComponent(artistName);
+    return `${SPOTIFY_BASE_URL}?q=track:${encodedTrack}+artist:${encodedArtist}&type=track&offset=0&limit=5`;
   }
 
   async createPlaylist(
