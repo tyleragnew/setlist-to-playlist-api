@@ -12,7 +12,11 @@ export class SetlistsController {
     @Query('allSongs') allSongs?: string,
   ) {
     return await this.setlistService
-      .getAverageSetlistByArtistName(artistMBID, numberOfSets, allSongs === 'true')
+      .getAverageSetlistByArtistName(
+        artistMBID,
+        numberOfSets,
+        allSongs === 'true',
+      )
       .then((res) => {
         return res;
       });

@@ -75,7 +75,9 @@ export class SetlistService {
     let currentTour: string | null = null;
     if (setlists[0]?.eventDate) {
       const mostRecentDate = parseDate(setlists[0].eventDate);
-      const daysSince = Math.floor((today.getTime() - mostRecentDate.getTime()) / (1000 * 60 * 60 * 24));
+      const daysSince = Math.floor(
+        (today.getTime() - mostRecentDate.getTime()) / (1000 * 60 * 60 * 24),
+      );
       if (daysSince <= 90 && setlists[0]?.tour?.name) {
         currentTour = setlists[0].tour.name;
       }
@@ -90,7 +92,11 @@ export class SetlistService {
     };
   }
 
-  async getAverageSetlistByArtistName(artistId: string, numberOfSets: number, allSongs = false) {
+  async getAverageSetlistByArtistName(
+    artistId: string,
+    numberOfSets: number,
+    allSongs = false,
+  ) {
     const setlistsByArtist = await this.setlistFMClient
       .getSetlistsByArtistName(artistId)
       .then((res) => {
@@ -106,9 +112,7 @@ export class SetlistService {
 
     for (let x = 0; x < sets.length; x++) {
       // Get songs from the main set and encores in a single list
-      const rawSongs = sets[x].set
-        .map((i) => i.song)
-        .flat();
+      const rawSongs = sets[x].set.map((i) => i.song).flat();
       songs.push(
         rawSongs
           .filter((s) => s.name && s.name.trim())
@@ -202,7 +206,8 @@ export class SetlistService {
     });
 
     const sorted = songStats.sort((a, b) => b.occurrences - a.occurrences);
-    const trimmed = numberOfSongs === Infinity ? sorted : sorted.splice(0, numberOfSongs);
+    const trimmed =
+      numberOfSongs === Infinity ? sorted : sorted.splice(0, numberOfSongs);
 
     return trimmed.sort(
       (a, b) =>

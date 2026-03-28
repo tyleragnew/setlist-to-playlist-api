@@ -90,7 +90,9 @@ export class SpotifyClient {
     try {
       const response = await lastValueFrom(
         this.httpService.get(
-          `https://api.spotify.com/v1/search?q=${encodeURIComponent(artistName)}&type=artist&limit=1`,
+          `https://api.spotify.com/v1/search?q=${encodeURIComponent(
+            artistName,
+          )}&type=artist&limit=1`,
           { headers },
         ),
       );
@@ -140,10 +142,9 @@ export class SpotifyClient {
       // Search for cover songs using the original artist
       const coverRequests = coverSongs.map(({ song }) =>
         this.httpService
-          .get(
-            this.generateSpotifyTrackURL(song.title, song.coverArtist),
-            { headers },
-          )
+          .get(this.generateSpotifyTrackURL(song.title, song.coverArtist), {
+            headers,
+          })
           .toPromise(),
       );
 
@@ -211,9 +212,7 @@ export class SpotifyClient {
         } else {
           // For main artist songs, verify against resolved artist ID
           track = artistId
-            ? items.find((item) =>
-                item.artists.some((a) => a.id === artistId),
-              )
+            ? items.find((item) => item.artists.some((a) => a.id === artistId))
             : items[0];
         }
 
@@ -224,7 +223,9 @@ export class SpotifyClient {
           });
         } else {
           console.log(
-            `[UNMAPPED] "${song.title}"${song.coverArtist ? ` (cover of ${song.coverArtist})` : ''} - ${items.length} results`,
+            `[UNMAPPED] "${song.title}"${
+              song.coverArtist ? ` (cover of ${song.coverArtist})` : ''
+            } - ${items.length} results`,
           );
           unfoundTracks.push(song.title);
         }
