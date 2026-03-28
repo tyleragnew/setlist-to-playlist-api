@@ -328,6 +328,7 @@ export class SpotifyClient {
         playlistId: playlistId,
         embedURL: `https://open.spotify.com/embed/playlist/${playlistId}?utm_source=generator`,
         unmappedSongs: playlistMetadata.unmappedSongs,
+        trackCount: playlistMetadata.mappedSongs.length,
       };
 
       return response;

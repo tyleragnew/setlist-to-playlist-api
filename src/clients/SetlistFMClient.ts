@@ -53,18 +53,22 @@ export class SetlistFMClient {
 
   async getArtistSetlistYearRange(
     artistMBID: string,
+    existingPageOneData?: any,
   ): Promise<{ beginYear: number | null; endYear: number | null }> {
     try {
-      // Page 1 gives us the most recent shows
-      const firstPage = await this.httpService
-        .get(SETLIST_FM_BASE_URL + `artist/${artistMBID}/setlists?p=1`, {
-          headers,
-        })
-        .toPromise();
+      const pageOneData =
+        existingPageOneData ??
+        (
+          await this.httpService
+            .get(SETLIST_FM_BASE_URL + `artist/${artistMBID}/setlists?p=1`, {
+              headers,
+            })
+            .toPromise()
+        ).data;
 
-      const total = firstPage.data?.total ?? 0;
-      const itemsPerPage = firstPage.data?.itemsPerPage ?? 20;
-      const firstSetlists = firstPage.data?.setlist ?? [];
+      const total = pageOneData?.total ?? 0;
+      const itemsPerPage = pageOneData?.itemsPerPage ?? 20;
+      const firstSetlists = pageOneData?.setlist ?? [];
 
       if (total === 0 || firstSetlists.length === 0) {
         return { beginYear: null, endYear: null };

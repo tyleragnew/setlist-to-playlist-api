@@ -49,10 +49,12 @@ export class SetlistService {
   constructor(private readonly setlistFMClient: SetlistFMClient) {}
 
   async getArtistShowMeta(artistId: string): Promise<ArtistShowMeta> {
-    const [data, activeYears] = await Promise.all([
-      this.setlistFMClient.getSetlistsByArtistName(artistId),
-      this.setlistFMClient.getArtistSetlistYearRange(artistId),
-    ]);
+    const data = await this.setlistFMClient.getSetlistsByArtistName(artistId);
+    // Reuse page 1 data for year range to avoid duplicate API call and rate limits
+    const activeYears = await this.setlistFMClient.getArtistSetlistYearRange(
+      artistId,
+      data,
+    );
     const setlists = data?.setlist ?? [];
 
     const today = new Date();
