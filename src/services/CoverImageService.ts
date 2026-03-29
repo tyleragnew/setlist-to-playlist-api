@@ -1,21 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import sharp = require('sharp');
 import * as path from 'path';
-import * as fs from 'fs';
 
 @Injectable()
 export class CoverImageService {
-  private outfitBoldBase64: string;
-  private dmSansBase64: string;
+  private fontsDir: string;
+  private outfitBoldPath: string;
+  private dmSansPath: string;
 
   constructor() {
-    const fontsDir = path.join(__dirname, '..', 'assets', 'fonts');
-    this.outfitBoldBase64 = fs
-      .readFileSync(path.join(fontsDir, 'Outfit-Bold.ttf'))
-      .toString('base64');
-    this.dmSansBase64 = fs
-      .readFileSync(path.join(fontsDir, 'DMSans-Regular.ttf'))
-      .toString('base64');
+    this.fontsDir = path.join(__dirname, '..', 'assets', 'fonts');
+    this.outfitBoldPath = path.join(this.fontsDir, 'Outfit-Bold.ttf');
+    this.dmSansPath = path.join(this.fontsDir, 'DMSans-Regular.ttf');
   }
 
   async generateCoverImage(
@@ -42,105 +38,99 @@ export class CoverImageService {
       year: 'numeric',
     });
 
-    // Wrap description text into lines (~45 chars per line at font-size 14)
-    const descLines = playlistDescription
-      ? this.wrapText(playlistDescription, 50)
-      : [];
-    const descSvg = descLines
-      .map(
-        (line, i) =>
-          `<tspan x="${padding}" dy="${i === 0 ? 0 : 18}">${this.escapeXml(
-            line,
-          )}</tspan>`,
-      )
-      .join('');
+    // Build description text
+    const descText = playlistDescription
+      ? this.wrapText(playlistDescription, 50).join('\n')
+      : '';
 
-    const svg = `
+    // Create base image with background and grid pattern
+    const bgSvg = `
       <svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <style>
-            @font-face {
-              font-family: 'Outfit';
-              src: url('data:font/ttf;base64,${
-                this.outfitBoldBase64
-              }') format('truetype');
-              font-weight: 700;
-            }
-            @font-face {
-              font-family: 'DM Sans';
-              src: url('data:font/ttf;base64,${
-                this.dmSansBase64
-              }') format('truetype');
-              font-weight: 400;
-            }
-          </style>
-        </defs>
-
-        <!-- Background -->
         <rect width="${size}" height="${size}" fill="#f5f5f5"/>
-
-        <!-- Subtle grid pattern -->
         <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
           <path d="M 32 0 L 0 0 0 32" fill="none" stroke="#e8e8e8" stroke-width="0.5"/>
         </pattern>
         <rect width="${size}" height="${size}" fill="url(#grid)"/>
-
-        <!-- Accent line -->
         <rect x="${padding}" y="${
       size - 210
     }" width="48" height="3" rx="1.5" fill="#1DB954"/>
-
-        <!-- Artist name -->
-        <text
-          x="${padding}"
-          y="${size - 155}"
-          font-family="Outfit, sans-serif"
-          font-weight="700"
-          font-size="${nameFontSize}"
-          fill="#111111"
-          letter-spacing="-0.02em"
-        >${this.escapeXml(displayName)}</text>
-
-        <!-- Subtitle -->
-        <text
-          x="${padding}"
-          y="${size - 105}"
-          font-family="Outfit, sans-serif"
-          font-weight="700"
-          font-size="26"
-          fill="#666666"
-        >Setlist2Playlist</text>
-
-        <!-- Description -->
-        ${
-          descLines.length > 0
-            ? `
-        <text
-          x="${padding}"
-          y="${size - 78}"
-          font-family="DM Sans, sans-serif"
-          font-weight="400"
-          font-size="14"
-          fill="#888888"
-        >${descSvg}</text>
-        `
-            : ''
-        }
-
-        <!-- Footer -->
-        <text
-          x="${padding}"
-          y="${size - 28}"
-          font-family="DM Sans, sans-serif"
-          font-weight="400"
-          font-size="12"
-          fill="#999999"
-          letter-spacing="0.03em"
-        >Generated ${this.escapeXml(dateStr)} · Setlist2Playlist.app</text>
       </svg>
     `;
 
-    let image = sharp(Buffer.from(svg));
+    // Render text layers using sharp's native text API (Pango)
+    const layers: sharp.OverlayOptions[] = [];
+
+    // Artist name
+    const nameLayer = await sharp({
+      text: {
+        text: `<span foreground="#111111" letter_spacing="${-320}">${this.escapeMarkup(
+          displayName,
+        )}</span>`,
+        fontfile: this.outfitBoldPath,
+        width: size - padding * 2,
+        height: nameFontSize + 20,
+        dpi: (nameFontSize / 12) * 72,
+        rgba: true,
+      },
+    })
+      .png()
+      .toBuffer();
+    layers.push({
+      input: nameLayer,
+      top: size - 170 - nameFontSize + 52,
+      left: padding,
+    });
+
+    // Subtitle
+    const subtitleLayer = await sharp({
+      text: {
+        text: `<span foreground="#666666">Setlist2Playlist</span>`,
+        fontfile: this.outfitBoldPath,
+        width: size - padding * 2,
+        height: 46,
+        dpi: (26 / 12) * 72,
+        rgba: true,
+      },
+    })
+      .png()
+      .toBuffer();
+    layers.push({ input: subtitleLayer, top: size - 130, left: padding });
+
+    // Description
+    if (descText) {
+      const descLayer = await sharp({
+        text: {
+          text: `<span foreground="#888888">${this.escapeMarkup(
+            descText,
+          )}</span>`,
+          fontfile: this.dmSansPath,
+          width: size - padding * 2,
+          height: 60,
+          dpi: (14 / 12) * 72,
+          rgba: true,
+        },
+      })
+        .png()
+        .toBuffer();
+      layers.push({ input: descLayer, top: size - 92, left: padding });
+    }
+
+    // Footer
+    const footerLayer = await sharp({
+      text: {
+        text: `<span foreground="#999999" letter_spacing="360">Generated ${this.escapeMarkup(
+          dateStr,
+        )} · Setlist2Playlist.app</span>`,
+        fontfile: this.dmSansPath,
+        width: size - padding * 2,
+        height: 24,
+        dpi: (12 / 12) * 72,
+        rgba: true,
+      },
+    })
+      .png()
+      .toBuffer();
+    layers.push({ input: footerLayer, top: size - 40, left: padding });
 
     // If we have an artist image, composite it in the top-right area
     if (artistImageUrl) {
@@ -149,7 +139,6 @@ export class CoverImageService {
         const arrayBuffer = await response.arrayBuffer();
         const imgBuffer = Buffer.from(arrayBuffer);
 
-        // Create a circular masked version of the artist image
         const imgSize = 260;
         const circleImg = await sharp(imgBuffer)
           .resize(imgSize, imgSize, { fit: 'cover' })
@@ -169,17 +158,17 @@ export class CoverImageService {
           .png()
           .toBuffer();
 
-        image = sharp(Buffer.from(svg)).composite([
-          {
-            input: circleImg,
-            top: padding,
-            left: size - imgSize - padding,
-          },
-        ]);
+        layers.push({
+          input: circleImg,
+          top: padding,
+          left: size - imgSize - padding,
+        });
       } catch {
         // If fetching artist image fails, continue without it
       }
     }
+
+    const image = sharp(Buffer.from(bgSvg)).composite(layers);
 
     const jpegBuffer = await image.jpeg({ quality: 90 }).toBuffer();
 
@@ -202,7 +191,7 @@ export class CoverImageService {
     return lines.slice(0, 3); // max 3 lines
   }
 
-  private escapeXml(str: string): string {
+  private escapeMarkup(str: string): string {
     return str
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
