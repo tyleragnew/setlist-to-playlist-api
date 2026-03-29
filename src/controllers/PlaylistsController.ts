@@ -26,7 +26,10 @@ export class PlaylistController {
 
     return this.playlistService.makePlaylist(
       userId,
-      { ...playlistMetadata, playlistDescription: requestBody.playlistDescription },
+      {
+        ...playlistMetadata,
+        playlistDescription: requestBody.playlistDescription,
+      },
       apiKey,
       requestBody.artistImageUrl,
     );

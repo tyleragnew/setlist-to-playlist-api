@@ -381,7 +381,10 @@ export class SpotifyClient {
       console.log(`Uploaded cover image for playlist ${playlistId}`);
     } catch (error) {
       // Non-fatal — playlist still works without a custom cover
-      console.error('Failed to upload playlist cover:', (error as any)?.message);
+      console.error(
+        'Failed to upload playlist cover:',
+        (error as any)?.message,
+      );
     }
   }
 

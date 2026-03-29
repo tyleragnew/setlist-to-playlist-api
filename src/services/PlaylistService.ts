@@ -26,7 +26,12 @@ export class PlaylistService {
     return res;
   }
 
-  async makePlaylist(userId, playlistMetadata, apiKey, artistImageUrl?: string) {
+  async makePlaylist(
+    userId,
+    playlistMetadata,
+    apiKey,
+    artistImageUrl?: string,
+  ) {
     const res = await this.spotifyClient.createPlaylist(
       userId,
       playlistMetadata,
@@ -47,7 +52,10 @@ export class PlaylistService {
           apiKey,
         );
       } catch (error) {
-        console.error('Cover image generation/upload failed:', error instanceof Error ? error.stack : error);
+        console.error(
+          'Cover image generation/upload failed:',
+          error instanceof Error ? error.stack : error,
+        );
       }
     }
 
