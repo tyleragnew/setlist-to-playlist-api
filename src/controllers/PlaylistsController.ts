@@ -24,6 +24,11 @@ export class PlaylistController {
         return res;
       });
 
-    return this.playlistService.makePlaylist(userId, playlistMetadata, apiKey);
+    return this.playlistService.makePlaylist(
+      userId,
+      { ...playlistMetadata, playlistDescription: requestBody.playlistDescription },
+      apiKey,
+      requestBody.artistImageUrl,
+    );
   }
 }

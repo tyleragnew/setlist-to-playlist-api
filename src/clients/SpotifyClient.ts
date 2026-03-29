@@ -359,6 +359,32 @@ export class SpotifyClient {
     }
   }
 
+  async uploadPlaylistCover(
+    playlistId: string,
+    base64Image: string,
+    apiKey: string,
+  ): Promise<void> {
+    const token = this.normalizeToken(apiKey);
+    try {
+      await lastValueFrom(
+        this.httpService.put(
+          `https://api.spotify.com/v1/playlists/${playlistId}/images`,
+          base64Image,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'image/jpeg',
+            },
+          },
+        ),
+      );
+      console.log(`Uploaded cover image for playlist ${playlistId}`);
+    } catch (error) {
+      // Non-fatal — playlist still works without a custom cover
+      console.error('Failed to upload playlist cover:', (error as any)?.message);
+    }
+  }
+
   getArtistImageByArtistName(artistName: string, apiKey: string) {
     const token = this.normalizeToken(apiKey);
     const headers = {

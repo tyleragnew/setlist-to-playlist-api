@@ -9,6 +9,7 @@ import { SetlistsController } from './controllers/SetlistController';
 
 // Services
 import { ArtistService } from './services/ArtistService';
+import { CoverImageService } from './services/CoverImageService';
 import { PlaylistService } from './services/PlaylistService';
 import { SetlistService } from './services/SetlistService';
 
@@ -29,6 +30,7 @@ import { HealthController } from './controllers/HealthController';
   providers: [
     AppService,
     ArtistService,
+    CoverImageService,
     SetlistService,
     SetlistFMClient,
     MusicBrainzClient,

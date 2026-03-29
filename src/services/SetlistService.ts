@@ -228,20 +228,22 @@ export class SetlistService {
     listOfSetlists.forEach((set) => {
       if (set.length > 0) {
         set.forEach((songEntry, songIndex) => {
-          const title = songEntry.title.toUpperCase();
+          const key = songEntry.title.toUpperCase();
           // skip blank songs
-          if (title === '') {
+          if (key === '') {
           }
           // check if exists, if it does update
-          else if (songStats.some((obj) => obj.title === title)) {
-            const indexId = songStats.findIndex((obj) => obj.title === title);
+          else if (songStats.some((obj) => obj.title.toUpperCase() === key)) {
+            const indexId = songStats.findIndex(
+              (obj) => obj.title.toUpperCase() === key,
+            );
             songStats[indexId].occurrences++;
             songStats[indexId].position.push(songIndex + 1);
           }
-          // else create
+          // else create — preserve original case from setlist.fm
           else {
             const stat: SongStat = {
-              title,
+              title: songEntry.title,
               occurrences: 1,
               position: [songIndex + 1],
             };
