@@ -5,7 +5,7 @@ import { ArtistService } from '../services/ArtistService';
 export class ArtistController {
   constructor(private readonly artistService: ArtistService) {}
 
-  /* This endpoint will be used by the frontend to bring back artists that the 
+  /* This endpoint will be used by the frontend to bring back artists that the
   end-user can choose from. By coalescing around an MBID, we are much more likely
   to get an exact match on artist. Example searches that haven't worked direct to
   Setlist.FM are "Genesis"
@@ -23,5 +23,11 @@ export class ArtistController {
   ) {
     const apiKey = headers['api-key'];
     return this.artistService.getArtistMetadataByName(artist, apiKey);
+  }
+
+  @Get('top')
+  getTopArtists(@Headers() headers: Record<string, string>) {
+    const apiKey = headers['api-key'];
+    return this.artistService.getTopArtists(apiKey);
   }
 }

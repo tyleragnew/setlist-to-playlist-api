@@ -337,6 +337,28 @@ export class SpotifyClient {
     }
   }
 
+  async getTopArtists(
+    apiKey: string,
+    limit = 10,
+  ): Promise<{ name: string; imageUrl: string | null }[]> {
+    const token = this.normalizeToken(apiKey);
+    const headers = { Authorization: `Bearer ${token}` };
+    try {
+      const response = await lastValueFrom(
+        this.httpService.get(
+          `https://api.spotify.com/v1/me/top/artists?time_range=short_term&limit=${limit}`,
+          { headers },
+        ),
+      );
+      return (response.data.items ?? []).map((a: any) => ({
+        name: a.name,
+        imageUrl: a.images?.[0]?.url ?? null,
+      }));
+    } catch (error) {
+      this.handleRequestError(error, 'getTopArtists');
+    }
+  }
+
   getArtistImageByArtistName(artistName: string, apiKey: string) {
     const token = this.normalizeToken(apiKey);
     const headers = {

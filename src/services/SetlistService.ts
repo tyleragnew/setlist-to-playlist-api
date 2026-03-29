@@ -25,6 +25,7 @@ export type AverageSetlist = {
   averageSetLength: number;
   songs: SongEntry[];
   similarity: number;
+  showCount: number;
   playlistDescription?: string;
 };
 
@@ -214,6 +215,7 @@ export class SetlistService {
         return entry;
       }),
       similarity: this.calculateSetlistSimilarity(setlistMetadata.setlists),
+      showCount: setsWithSongs.length,
     };
 
     return averageSetlist;
