@@ -1,17 +1,37 @@
 import { Injectable } from '@nestjs/common';
 import sharp = require('sharp');
+import * as opentype from 'opentype.js';
 import * as path from 'path';
-import * as fs from 'fs';
 
 @Injectable()
 export class CoverImageService {
-  private outfitBoldBase64: string;
+  private font: opentype.Font;
 
   constructor() {
     const fontsDir = path.join(__dirname, '..', 'assets', 'fonts');
-    this.outfitBoldBase64 = fs
-      .readFileSync(path.join(fontsDir, 'Outfit-Bold.ttf'))
-      .toString('base64');
+    this.font = opentype.loadSync(path.join(fontsDir, 'Outfit-Bold.ttf'));
+  }
+
+  private textToPath(
+    text: string,
+    x: number,
+    y: number,
+    fontSize: number,
+    fill: string,
+  ): string {
+    const p = this.font.getPath(text, x, y, fontSize);
+    return `<path d="${p.toPathData()}" fill="${fill}"/>`;
+  }
+
+  private textToPathRightAligned(
+    text: string,
+    rightX: number,
+    y: number,
+    fontSize: number,
+    fill: string,
+  ): string {
+    const width = this.font.getAdvanceWidth(text, fontSize);
+    return this.textToPath(text, rightX - width, y, fontSize, fill);
   }
 
   async generateCoverImage(
@@ -26,47 +46,51 @@ export class CoverImageService {
     const displayName =
       artistName.length > 30 ? artistName.substring(0, 28) + '...' : artistName;
 
+    // Build branding text as paths: "Setlist" + "2" + "Playlist"
+    const brandY = Math.round(border * 0.72);
+    const brandFontSize = 26;
+    let brandX = border;
+    const setlistPath = this.textToPath(
+      'Setlist',
+      brandX,
+      brandY,
+      brandFontSize,
+      '#111111',
+    );
+    brandX += this.font.getAdvanceWidth('Setlist', brandFontSize);
+    const twoPath = this.textToPath(
+      '2',
+      brandX,
+      brandY,
+      brandFontSize,
+      '#1DB954',
+    );
+    brandX += this.font.getAdvanceWidth('2', brandFontSize);
+    const playlistPath = this.textToPath(
+      'Playlist',
+      brandX,
+      brandY,
+      brandFontSize,
+      '#111111',
+    );
+
+    // Artist name right-aligned at bottom
+    const artistPath = this.textToPathRightAligned(
+      displayName,
+      size - border,
+      size - Math.round(border * 0.28),
+      24,
+      '#111111',
+    );
+
     const svg = `
       <svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <style>
-            @font-face {
-              font-family: 'Outfit';
-              src: url('data:font/ttf;base64,${
-                this.outfitBoldBase64
-              }') format('truetype');
-              font-weight: 700;
-            }
-          </style>
-        </defs>
-
-        <!-- White background -->
         <rect width="${size}" height="${size}" fill="#ffffff"/>
-
-        <!-- Grey fill for image area (fallback if no artist image) -->
         <rect x="${border}" y="${border}" width="${imgArea}" height="${imgArea}" fill="#e8e8e8"/>
-
-        <!-- Top border: Setlist2Playlist branding -->
-        <text
-          x="${border}"
-          y="${Math.round(border * 0.72)}"
-          font-family="Outfit, sans-serif"
-          font-weight="700"
-          font-size="26"
-          letter-spacing="-0.02em"
-        ><tspan fill="#111111">Setlist</tspan><tspan fill="#1DB954">2</tspan><tspan fill="#111111">Playlist</tspan></text>
-
-        <!-- Bottom border: artist name (right-aligned) -->
-        <text
-          x="${size - border}"
-          y="${size - Math.round(border * 0.28)}"
-          font-family="Outfit, sans-serif"
-          font-weight="700"
-          font-size="24"
-          fill="#111111"
-          letter-spacing="-0.01em"
-          text-anchor="end"
-        >${this.escapeXml(displayName)}</text>
+        ${setlistPath}
+        ${twoPath}
+        ${playlistPath}
+        ${artistPath}
       </svg>
     `;
 
@@ -94,14 +118,5 @@ export class CoverImageService {
 
     const jpegBuffer = await image.jpeg({ quality: 90 }).toBuffer();
     return jpegBuffer.toString('base64');
-  }
-
-  private escapeXml(str: string): string {
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&apos;');
   }
 }
