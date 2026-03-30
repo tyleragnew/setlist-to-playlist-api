@@ -44,7 +44,6 @@ export class PlaylistService {
         const base64Image = await this.coverImageService.generateCoverImage(
           playlistMetadata.artistName,
           artistImageUrl,
-          playlistMetadata.playlistDescription,
         );
         await this.spotifyClient.uploadPlaylistCover(
           res.playlistId,

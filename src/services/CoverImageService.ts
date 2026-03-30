@@ -1,197 +1,102 @@
 import { Injectable } from '@nestjs/common';
 import sharp = require('sharp');
 import * as path from 'path';
+import * as fs from 'fs';
 
 @Injectable()
 export class CoverImageService {
-  private fontsDir: string;
-  private outfitBoldPath: string;
-  private dmSansPath: string;
+  private outfitBoldBase64: string;
 
   constructor() {
-    this.fontsDir = path.join(__dirname, '..', 'assets', 'fonts');
-    this.outfitBoldPath = path.join(this.fontsDir, 'Outfit-Bold.ttf');
-    this.dmSansPath = path.join(this.fontsDir, 'DMSans-Regular.ttf');
+    const fontsDir = path.join(__dirname, '..', 'assets', 'fonts');
+    this.outfitBoldBase64 = fs
+      .readFileSync(path.join(fontsDir, 'Outfit-Bold.ttf'))
+      .toString('base64');
   }
 
   async generateCoverImage(
     artistName: string,
     artistImageUrl?: string,
-    playlistDescription?: string,
   ): Promise<string> {
     const size = 640;
-    const padding = 48;
+    const border = 44;
+    const imgArea = size - border * 2;
 
     // Truncate long artist names
     const displayName =
       artistName.length > 30 ? artistName.substring(0, 28) + '...' : artistName;
 
-    // Scale font size based on name length
-    const nameFontSize =
-      displayName.length > 20 ? 52 : displayName.length > 14 ? 64 : 76;
-
-    // Format today's date
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-
-    // Build description text
-    const descText = playlistDescription
-      ? this.wrapText(playlistDescription, 50).join('\n')
-      : '';
-
-    // Create base image with background and grid pattern
-    const bgSvg = `
+    const svg = `
       <svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
-        <rect width="${size}" height="${size}" fill="#f5f5f5"/>
-        <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
-          <path d="M 32 0 L 0 0 0 32" fill="none" stroke="#e8e8e8" stroke-width="0.5"/>
-        </pattern>
-        <rect width="${size}" height="${size}" fill="url(#grid)"/>
-        <rect x="${padding}" y="${
-      size - 210
-    }" width="48" height="3" rx="1.5" fill="#1DB954"/>
+        <defs>
+          <style>
+            @font-face {
+              font-family: 'Outfit';
+              src: url('data:font/ttf;base64,${
+                this.outfitBoldBase64
+              }') format('truetype');
+              font-weight: 700;
+            }
+          </style>
+        </defs>
+
+        <!-- White background -->
+        <rect width="${size}" height="${size}" fill="#ffffff"/>
+
+        <!-- Grey fill for image area (fallback if no artist image) -->
+        <rect x="${border}" y="${border}" width="${imgArea}" height="${imgArea}" fill="#e8e8e8"/>
+
+        <!-- Top border: Setlist2Playlist branding -->
+        <text
+          x="${border}"
+          y="${Math.round(border * 0.72)}"
+          font-family="Outfit, sans-serif"
+          font-weight="700"
+          font-size="26"
+          letter-spacing="-0.02em"
+        ><tspan fill="#111111">Setlist</tspan><tspan fill="#1DB954">2</tspan><tspan fill="#111111">Playlist</tspan></text>
+
+        <!-- Bottom border: artist name (right-aligned) -->
+        <text
+          x="${size - border}"
+          y="${size - Math.round(border * 0.28)}"
+          font-family="Outfit, sans-serif"
+          font-weight="700"
+          font-size="24"
+          fill="#111111"
+          letter-spacing="-0.01em"
+          text-anchor="end"
+        >${this.escapeXml(displayName)}</text>
       </svg>
     `;
 
-    // Render text layers using sharp's native text API (Pango)
-    const layers: sharp.OverlayOptions[] = [];
+    let image = sharp(Buffer.from(svg));
 
-    // Artist name
-    const nameLayer = await sharp({
-      text: {
-        text: `<span foreground="#111111" letter_spacing="${-320}">${this.escapeMarkup(
-          displayName,
-        )}</span>`,
-        fontfile: this.outfitBoldPath,
-        width: size - padding * 2,
-        height: nameFontSize + 20,
-        dpi: (nameFontSize / 12) * 72,
-        rgba: true,
-      },
-    })
-      .png()
-      .toBuffer();
-    layers.push({
-      input: nameLayer,
-      top: size - 170 - nameFontSize + 52,
-      left: padding,
-    });
-
-    // Subtitle
-    const subtitleLayer = await sharp({
-      text: {
-        text: `<span foreground="#666666">Setlist2Playlist</span>`,
-        fontfile: this.outfitBoldPath,
-        width: size - padding * 2,
-        height: 46,
-        dpi: (26 / 12) * 72,
-        rgba: true,
-      },
-    })
-      .png()
-      .toBuffer();
-    layers.push({ input: subtitleLayer, top: size - 130, left: padding });
-
-    // Description
-    if (descText) {
-      const descLayer = await sharp({
-        text: {
-          text: `<span foreground="#888888">${this.escapeMarkup(
-            descText,
-          )}</span>`,
-          fontfile: this.dmSansPath,
-          width: size - padding * 2,
-          height: 60,
-          dpi: (14 / 12) * 72,
-          rgba: true,
-        },
-      })
-        .png()
-        .toBuffer();
-      layers.push({ input: descLayer, top: size - 92, left: padding });
-    }
-
-    // Footer
-    const footerLayer = await sharp({
-      text: {
-        text: `<span foreground="#999999" letter_spacing="360">Generated ${this.escapeMarkup(
-          dateStr,
-        )} · Setlist2Playlist.app</span>`,
-        fontfile: this.dmSansPath,
-        width: size - padding * 2,
-        height: 24,
-        dpi: (12 / 12) * 72,
-        rgba: true,
-      },
-    })
-      .png()
-      .toBuffer();
-    layers.push({ input: footerLayer, top: size - 40, left: padding });
-
-    // If we have an artist image, composite it in the top-right area
+    // Composite the artist image into the center area
     if (artistImageUrl) {
       try {
         const response = await fetch(artistImageUrl);
         const arrayBuffer = await response.arrayBuffer();
         const imgBuffer = Buffer.from(arrayBuffer);
 
-        const imgSize = 260;
-        const circleImg = await sharp(imgBuffer)
-          .resize(imgSize, imgSize, { fit: 'cover' })
-          .composite([
-            {
-              input: Buffer.from(
-                `<svg width="${imgSize}" height="${imgSize}">
-                  <rect width="${imgSize}" height="${imgSize}" fill="black"/>
-                  <circle cx="${imgSize / 2}" cy="${imgSize / 2}" r="${
-                  imgSize / 2
-                }" fill="white"/>
-                </svg>`,
-              ),
-              blend: 'dest-in',
-            },
-          ])
+        const artistImg = await sharp(imgBuffer)
+          .resize(imgArea, imgArea, { fit: 'cover' })
           .png()
           .toBuffer();
 
-        layers.push({
-          input: circleImg,
-          top: padding,
-          left: size - imgSize - padding,
-        });
+        image = sharp(Buffer.from(svg)).composite([
+          { input: artistImg, top: border, left: border },
+        ]);
       } catch {
         // If fetching artist image fails, continue without it
       }
     }
 
-    const image = sharp(Buffer.from(bgSvg)).composite(layers);
-
     const jpegBuffer = await image.jpeg({ quality: 90 }).toBuffer();
-
     return jpegBuffer.toString('base64');
   }
 
-  private wrapText(text: string, maxChars: number): string[] {
-    const words = text.split(' ');
-    const lines: string[] = [];
-    let current = '';
-    for (const word of words) {
-      if (current && (current + ' ' + word).length > maxChars) {
-        lines.push(current);
-        current = word;
-      } else {
-        current = current ? current + ' ' + word : word;
-      }
-    }
-    if (current) lines.push(current);
-    return lines.slice(0, 3); // max 3 lines
-  }
-
-  private escapeMarkup(str: string): string {
+  private escapeXml(str: string): string {
     return str
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
