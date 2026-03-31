@@ -159,7 +159,8 @@ export class SpotifyClient {
         for (const item of response.data.tracks.items) {
           for (const a of item.artists) {
             if (
-              a.name.toLowerCase() === averageSetlist.artistName.toLowerCase()
+              this.normalizeArtistName(a.name) ===
+              this.normalizeArtistName(averageSetlist.artistName)
             ) {
               artistIdCounts.set(a.id, (artistIdCounts.get(a.id) || 0) + 1);
             }
@@ -174,6 +175,51 @@ export class SpotifyClient {
         if (count > maxCount) {
           artistId = id;
           maxCount = count;
+        }
+      }
+
+      // If strict search found nothing, retry with loose search
+      if (!artistId) {
+        console.log(
+          `No results with strict search for "${averageSetlist.artistName}", retrying with loose search`,
+        );
+        const looseRequests = averageSetlist.songs.map((song) =>
+          this.httpService
+            .get(
+              this.generateSpotifyTrackURL(
+                song.title,
+                averageSetlist.artistName,
+                true,
+              ),
+              { headers },
+            )
+            .toPromise(),
+        );
+        const looseResponses = await Promise.all(looseRequests);
+        looseResponses.forEach((response, idx) => {
+          allResponses[idx] = response;
+        });
+
+        // Re-resolve artist ID from loose results
+        artistIdCounts.clear();
+        allResponses.forEach((response) => {
+          for (const item of response.data.tracks.items) {
+            for (const a of item.artists) {
+              if (
+                this.normalizeArtistName(a.name) ===
+                this.normalizeArtistName(averageSetlist.artistName)
+              ) {
+                artistIdCounts.set(a.id, (artistIdCounts.get(a.id) || 0) + 1);
+              }
+            }
+          }
+        });
+        maxCount = 0;
+        for (const [id, count] of artistIdCounts) {
+          if (count > maxCount) {
+            artistId = id;
+            maxCount = count;
+          }
         }
       }
 
@@ -273,9 +319,27 @@ export class SpotifyClient {
     }
   }
 
-  generateSpotifyTrackURL(songTitle: string, artistName: string) {
+  private normalizeArtistName(name: string): string {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .trim();
+  }
+
+  generateSpotifyTrackURL(
+    songTitle: string,
+    artistName: string,
+    loose = false,
+  ) {
+    const cleanArtist = artistName
+      .replace(/^[^a-zA-Z0-9]+/, '')
+      .replace(/[^a-zA-Z0-9]+$/, '');
+    if (loose) {
+      const query = encodeURIComponent(`${songTitle} ${cleanArtist}`);
+      return `${SPOTIFY_BASE_URL}?q=${query}&type=track&offset=0&limit=5`;
+    }
     const encodedTrack = encodeURIComponent(songTitle);
-    const encodedArtist = encodeURIComponent(artistName);
+    const encodedArtist = encodeURIComponent(cleanArtist);
     return `${SPOTIFY_BASE_URL}?q=track:${encodedTrack}+artist:${encodedArtist}&type=track&offset=0&limit=5`;
   }
 

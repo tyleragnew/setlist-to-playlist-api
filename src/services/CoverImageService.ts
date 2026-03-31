@@ -2,14 +2,47 @@ import { Injectable } from '@nestjs/common';
 import sharp = require('sharp');
 import * as opentype from 'opentype.js';
 import * as path from 'path';
+import * as fs from 'fs';
 
 @Injectable()
 export class CoverImageService {
   private font: opentype.Font;
+  private faviconSvg: string;
 
   constructor() {
-    const fontsDir = path.join(__dirname, '..', 'assets', 'fonts');
-    this.font = opentype.loadSync(path.join(fontsDir, 'Outfit-Bold.ttf'));
+    const assetsDir = path.join(__dirname, '..', 'assets');
+    this.font = opentype.loadSync(
+      path.join(assetsDir, 'fonts', 'Outfit-Bold.ttf'),
+    );
+    this.faviconSvg = fs.readFileSync(
+      path.join(assetsDir, 'favicon.svg'),
+      'utf-8',
+    );
+  }
+
+  private async solidBackground(size: number): Promise<Buffer> {
+    return sharp({
+      create: { width: size, height: size, channels: 4, background: '#1a1a1a' },
+    })
+      .png()
+      .toBuffer();
+  }
+
+  private wrapText(text: string, fontSize: number, maxWidth: number): string[] {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let current = '';
+    for (const word of words) {
+      const test = current ? current + ' ' + word : word;
+      if (this.font.getAdvanceWidth(test, fontSize) > maxWidth && current) {
+        lines.push(current);
+        current = word;
+      } else {
+        current = test;
+      }
+    }
+    if (current) lines.push(current);
+    return lines;
   }
 
   private textToPath(
@@ -23,100 +56,102 @@ export class CoverImageService {
     return `<path d="${p.toPathData()}" fill="${fill}"/>`;
   }
 
-  private textToPathRightAligned(
-    text: string,
-    rightX: number,
-    y: number,
-    fontSize: number,
-    fill: string,
-  ): string {
-    const width = this.font.getAdvanceWidth(text, fontSize);
-    return this.textToPath(text, rightX - width, y, fontSize, fill);
-  }
-
   async generateCoverImage(
     artistName: string,
     artistImageUrl?: string,
   ): Promise<string> {
     const size = 640;
-    const border = 44;
-    const imgArea = size - border * 2;
 
-    // Truncate long artist names
-    const displayName =
-      artistName.length > 30 ? artistName.substring(0, 28) + '...' : artistName;
+    // 1. Process the Background Artist Image
+    let artistImgBuffer: Buffer;
 
-    // Build branding text as paths: "Setlist" + "2" + "Playlist"
-    const brandY = Math.round(border * 0.72);
-    const brandFontSize = 26;
-    let brandX = border;
-    const setlistPath = this.textToPath(
-      'Setlist',
-      brandX,
-      brandY,
-      brandFontSize,
-      '#111111',
-    );
-    brandX += this.font.getAdvanceWidth('Setlist', brandFontSize);
-    const twoPath = this.textToPath(
-      '2',
-      brandX,
-      brandY,
-      brandFontSize,
-      '#1DB954',
-    );
-    brandX += this.font.getAdvanceWidth('2', brandFontSize);
-    const playlistPath = this.textToPath(
-      'Playlist',
-      brandX,
-      brandY,
-      brandFontSize,
-      '#111111',
-    );
-
-    // Artist name right-aligned at bottom
-    const artistPath = this.textToPathRightAligned(
-      displayName,
-      size - border,
-      size - Math.round(border * 0.28),
-      24,
-      '#111111',
-    );
-
-    const svg = `
-      <svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
-        <rect width="${size}" height="${size}" fill="#ffffff"/>
-        <rect x="${border}" y="${border}" width="${imgArea}" height="${imgArea}" fill="#e8e8e8"/>
-        ${setlistPath}
-        ${twoPath}
-        ${playlistPath}
-        ${artistPath}
-      </svg>
-    `;
-
-    let image = sharp(Buffer.from(svg));
-
-    // Composite the artist image into the center area
     if (artistImageUrl) {
       try {
         const response = await fetch(artistImageUrl);
         const arrayBuffer = await response.arrayBuffer();
-        const imgBuffer = Buffer.from(arrayBuffer);
 
-        const artistImg = await sharp(imgBuffer)
-          .resize(imgArea, imgArea, { fit: 'cover' })
-          .png()
+        artistImgBuffer = await sharp(Buffer.from(arrayBuffer))
+          .resize(size, size, { fit: 'cover' })
+          .grayscale()
+          .linear(1.2, -20)
+          .ensureAlpha()
+          .composite([
+            {
+              input: Buffer.from(
+                `<svg><rect width="${size}" height="${size}" fill="black" fill-opacity="0.3"/></svg>`,
+              ),
+              top: 0,
+              left: 0,
+            },
+          ])
           .toBuffer();
-
-        image = sharp(Buffer.from(svg)).composite([
-          { input: artistImg, top: border, left: border },
-        ]);
       } catch {
-        // If fetching artist image fails, continue without it
+        artistImgBuffer = await this.solidBackground(size);
       }
+    } else {
+      artistImgBuffer = await this.solidBackground(size);
     }
 
-    const jpegBuffer = await image.jpeg({ quality: 90 }).toBuffer();
-    return jpegBuffer.toString('base64');
+    // 2. Build favicon for upper-left corner
+    const iconSize = 64;
+    const margin = 30;
+    const faviconBuffer = await sharp(Buffer.from(this.faviconSvg))
+      .resize(iconSize, iconSize)
+      .png()
+      .toBuffer();
+
+    // 3. Build artist name overlay — split into lines that fit
+    const displayName = artistName.toUpperCase();
+    const maxWidth = size - margin * 2;
+    const artistFontSize = displayName.length > 12 ? 80 : 110;
+    const lines = this.wrapText(displayName, artistFontSize, maxWidth);
+
+    // Subtitle line
+    const subtitleFontSize = 16;
+    const subtitle = 'Generated by Setlist2Playlist.app';
+
+    // Position from the bottom: subtitle first, then lines above it
+    const subtitleY = size - margin;
+    const lineHeight = artistFontSize * 1.1;
+    const artistBaseY =
+      subtitleY - subtitleFontSize * 1.5 - (lines.length - 1) * lineHeight;
+
+    const linePaths = lines
+      .map((line, i) =>
+        this.textToPath(
+          line,
+          margin,
+          artistBaseY + i * lineHeight,
+          artistFontSize,
+          '#ffffff',
+        ),
+      )
+      .join('\n');
+
+    const subtitlePath = this.textToPath(
+      subtitle,
+      margin,
+      subtitleY,
+      subtitleFontSize,
+      'rgba(255,255,255,0.6)',
+    );
+
+    const overlaySvg = `
+      <svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+        ${linePaths}
+        ${subtitlePath}
+      </svg>
+    `;
+
+    // 4. Composite everything
+    const finalImage = await sharp(artistImgBuffer)
+      .composite([
+        { input: Buffer.from(overlaySvg), top: 0, left: 0 },
+        { input: faviconBuffer, top: margin, left: size - margin - iconSize },
+      ])
+      .jpeg({ quality: 90 })
+      .toBuffer();
+
+    return finalImage.toString('base64');
   }
 }
