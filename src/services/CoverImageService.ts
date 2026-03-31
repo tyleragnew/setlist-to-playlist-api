@@ -3,18 +3,21 @@ import sharp = require('sharp');
 import * as opentype from 'opentype.js';
 import * as path from 'path';
 
-const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <circle cx="32" cy="32" r="32" fill="#121212"/>
-  <text x="8" y="44" font-family="Inter, system-ui, sans-serif" font-size="28" font-weight="800" fill="#1DB954" letter-spacing="-1">S2P</text>
-</svg>`;
-
 @Injectable()
 export class CoverImageService {
   private font: opentype.Font;
+  private faviconSvg: string;
 
   constructor() {
     const fontsDir = path.join(__dirname, '..', 'assets', 'fonts');
     this.font = opentype.loadSync(path.join(fontsDir, 'Outfit-Bold.ttf'));
+
+    // Build favicon SVG with font path data so it doesn't depend on installed fonts
+    const s2pPath = this.font.getPath('S2P', 8, 44, 28);
+    this.faviconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+      <circle cx="32" cy="32" r="32" fill="#121212"/>
+      <path d="${s2pPath.toPathData()}" fill="#1DB954"/>
+    </svg>`;
   }
 
   private async solidBackground(size: number): Promise<Buffer> {
@@ -92,7 +95,7 @@ export class CoverImageService {
     // 2. Build favicon for upper-left corner
     const iconSize = 64;
     const margin = 30;
-    const faviconBuffer = await sharp(Buffer.from(FAVICON_SVG))
+    const faviconBuffer = await sharp(Buffer.from(this.faviconSvg))
       .resize(iconSize, iconSize)
       .png()
       .toBuffer();
