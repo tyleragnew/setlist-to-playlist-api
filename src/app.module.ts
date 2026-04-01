@@ -18,6 +18,7 @@ import { MusicBrainzClient } from './clients/MusicBrainzClient';
 import { SetlistFMClient } from './clients/SetlistFMClient';
 import { SpotifyClient } from './clients/SpotifyClient';
 import { HealthController } from './controllers/HealthController';
+import { ServiceAccountTokenManager } from './services/ServiceAccountTokenManager';
 
 @Module({
   imports: [HttpModule],
@@ -36,6 +37,7 @@ import { HealthController } from './controllers/HealthController';
     MusicBrainzClient,
     PlaylistService,
     SpotifyClient,
+    ServiceAccountTokenManager,
   ],
 })
 export class AppModule {}

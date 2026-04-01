@@ -1,30 +1,35 @@
 import { Controller, Headers, Body, Post } from '@nestjs/common';
 import { PlaylistService } from '../services/PlaylistService';
+import { ServiceAccountTokenManager } from '../services/ServiceAccountTokenManager';
 
 @Controller('playlists')
 export class PlaylistController {
-  constructor(private readonly playlistService: PlaylistService) {}
+  constructor(
+    private readonly playlistService: PlaylistService,
+    private readonly serviceAccountTokenManager: ServiceAccountTokenManager,
+  ) {}
 
   @Post()
   async createPlaylist(
     @Body() requestBody: any,
     @Headers() headers: Record<string, string>,
   ) {
-    const apiKey = headers['api-key'];
+    const userToken = headers['api-key'];
 
-    const userId = await this.playlistService
-      .getUserIdFrom(apiKey)
-      .then((res) => {
-        return res;
-      });
+    // Guest mode: use service account token when no user token provided
+    const apiKey =
+      userToken || (await this.serviceAccountTokenManager.getAccessToken());
+    const isGuest = !userToken;
 
-    const playlistMetadata = await this.playlistService
-      .putTogetherPlaylistDraftFromAverageSetlist(requestBody, apiKey)
-      .then((res) => {
-        return res;
-      });
+    const userId = await this.playlistService.getUserIdFrom(apiKey);
 
-    return this.playlistService.makePlaylist(
+    const playlistMetadata =
+      await this.playlistService.putTogetherPlaylistDraftFromAverageSetlist(
+        requestBody,
+        apiKey,
+      );
+
+    const result = await this.playlistService.makePlaylist(
       userId,
       {
         ...playlistMetadata,
@@ -33,5 +38,7 @@ export class PlaylistController {
       apiKey,
       requestBody.artistImageUrl,
     );
+
+    return { ...result, isGuest };
   }
 }
