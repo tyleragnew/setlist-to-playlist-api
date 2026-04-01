@@ -1,4 +1,10 @@
-import { Controller, Headers, Body, Post } from '@nestjs/common';
+import {
+  Controller,
+  Headers,
+  Body,
+  Post,
+  BadRequestException,
+} from '@nestjs/common';
 import { PlaylistService } from '../services/PlaylistService';
 import { ServiceAccountTokenManager } from '../services/ServiceAccountTokenManager';
 
@@ -28,6 +34,15 @@ export class PlaylistController {
         requestBody,
         apiKey,
       );
+
+    if (!playlistMetadata?.mappedSongs?.length) {
+      console.error(
+        `[Playlist] 0 tracks matched for artist="${requestBody.artistName}" | songs sent: ${requestBody.songs?.length ?? 0} | guest: ${isGuest}`,
+      );
+      throw new BadRequestException(
+        'No tracks could be found on Spotify for this setlist.',
+      );
+    }
 
     const result = await this.playlistService.makePlaylist(
       userId,
