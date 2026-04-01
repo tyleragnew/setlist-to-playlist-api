@@ -37,7 +37,13 @@ export class PlaylistController {
 
     if (!playlistMetadata?.mappedSongs?.length) {
       console.error(
-        `[Playlist] 0 tracks matched for artist="${requestBody.artistName}" | songs sent: ${requestBody.songs?.length ?? 0} | guest: ${isGuest}`,
+        JSON.stringify({
+          event: 'playlist_failed',
+          reason: 'no_tracks_matched',
+          artist: requestBody.artistName,
+          songsRequested: requestBody.songs?.length ?? 0,
+          isGuest,
+        }),
       );
       throw new BadRequestException(
         'No tracks could be found on Spotify for this setlist.',
@@ -52,6 +58,16 @@ export class PlaylistController {
       },
       apiKey,
       requestBody.artistImageUrl,
+    );
+
+    console.log(
+      JSON.stringify({
+        event: 'playlist_created',
+        artist: requestBody.artistName,
+        trackCount: result.trackCount,
+        unmappedCount: result.unmappedSongs?.length ?? 0,
+        isGuest,
+      }),
     );
 
     return { ...result, isGuest };
