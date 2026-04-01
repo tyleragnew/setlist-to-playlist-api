@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
   SetlistFMClient,
   SetlistMetadata,
@@ -47,6 +47,8 @@ export type ArtistShowMeta = {
 
 @Injectable()
 export class SetlistService {
+  private readonly logger = new Logger(SetlistService.name);
+
   constructor(private readonly setlistFMClient: SetlistFMClient) {}
 
   async getArtistShowMeta(artistId: string): Promise<ArtistShowMeta> {
@@ -191,7 +193,7 @@ export class SetlistService {
 
     let setlistLength = 0;
 
-    console.log('Number of Setlists: ' + setlistMetadata.setlists.length);
+    this.logger.log(`Number of Setlists: ${setlistMetadata.setlists.length}`);
 
     // Get number of songs in average set list and add to dictionary
     setlistMetadata.setlists.forEach((x) => {

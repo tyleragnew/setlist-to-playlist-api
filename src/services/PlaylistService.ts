@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { SpotifyClient } from '../clients/SpotifyClient';
 import { AverageSetlist } from './SetlistService';
 import { CoverImageService } from './CoverImageService';
 
 @Injectable()
 export class PlaylistService {
+  private readonly logger = new Logger(PlaylistService.name);
   constructor(
     private readonly spotifyClient: SpotifyClient,
     private readonly coverImageService: CoverImageService,
@@ -51,7 +52,7 @@ export class PlaylistService {
           apiKey,
         );
       } catch (error) {
-        console.error(
+        this.logger.error(
           'Cover image generation/upload failed:',
           error instanceof Error ? error.stack : error,
         );

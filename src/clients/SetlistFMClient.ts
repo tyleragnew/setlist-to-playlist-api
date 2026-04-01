@@ -1,5 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { SETLIST_FM_BASE_URL, X_API_KEY } from '../constants';
 
 export type SongEntry = {
@@ -21,6 +21,8 @@ const headers = {
 
 @Injectable()
 export class SetlistFMClient {
+  private readonly logger = new Logger(SetlistFMClient.name);
+
   constructor(private readonly httpService: HttpService) {}
   async getSetlistsByArtistName(artistMBID: string) {
     try {
@@ -30,7 +32,7 @@ export class SetlistFMClient {
         .toPromise();
       return response.data;
     } catch (error) {
-      console.log(error);
+      this.logger.error('Failed to fetch setlists', error);
     }
   }
 
@@ -101,7 +103,7 @@ export class SetlistFMClient {
 
       return { beginYear, endYear };
     } catch (error) {
-      console.error('Error fetching setlist year range:', error);
+      this.logger.error('Error fetching setlist year range:', error);
       return { beginYear: null, endYear: null };
     }
   }

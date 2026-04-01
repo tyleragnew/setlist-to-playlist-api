@@ -1,5 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { lastValueFrom } from 'rxjs';
 
 export type ArtistMetadata = {
@@ -11,6 +11,8 @@ export type ArtistMetadata = {
 
 @Injectable()
 export class MusicBrainzClient {
+  private readonly logger = new Logger(MusicBrainzClient.name);
+
   constructor(private readonly httpService: HttpService) {}
 
   async searchForMusicBrainzMetadataByArtistName(artist: string) {
@@ -18,7 +20,7 @@ export class MusicBrainzClient {
       'Content-Type': 'application/json',
     };
 
-    console.log(`Searching for Artist: ${artist}`);
+    this.logger.log(`Searching for Artist: ${artist}`);
 
     try {
       const response = this.httpService
@@ -35,7 +37,7 @@ export class MusicBrainzClient {
         imageURL: artist.imageURL,
       }));
     } catch (error) {
-      console.log(`Unable to call MusicBrainz for artist: ${artist}: ${error}`);
+      this.logger.error(`Unable to call MusicBrainz for artist: ${artist}`, error);
     }
   }
 

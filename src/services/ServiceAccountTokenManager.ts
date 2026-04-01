@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 @Injectable()
 export class ServiceAccountTokenManager {
+  private readonly logger = new Logger(ServiceAccountTokenManager.name);
   private accessToken: string | null = null;
   private expiresAt = 0;
   private refreshPromise: Promise<string> | null = null;
@@ -61,16 +62,12 @@ export class ServiceAccountTokenManager {
 
     // Spotify may rotate the refresh token
     if (json.refresh_token) {
-      console.log(
-        '[ServiceAccountTokenManager] Spotify rotated refresh token — update S2P_SPOTIFY_REFRESH_TOKEN env var',
+      this.logger.warn(
+        'Spotify rotated refresh token — update S2P_SPOTIFY_REFRESH_TOKEN env var',
       );
     }
 
-    console.log(
-      '[ServiceAccountTokenManager] Token refreshed, expires in',
-      json.expires_in,
-      'seconds',
-    );
+    this.logger.log(`Token refreshed, expires in ${json.expires_in} seconds`);
     return this.accessToken;
   }
 }

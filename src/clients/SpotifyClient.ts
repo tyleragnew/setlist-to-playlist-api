@@ -1,5 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { AxiosError } from 'axios';
 import { SPOTIFY_BASE_URL } from '../constants';
 import { AverageSetlist, SongEntry } from '../services/SetlistService';
@@ -19,13 +19,15 @@ export type PlaylistMetadata = {
 
 @Injectable()
 export class SpotifyClient {
+  private readonly logger = new Logger(SpotifyClient.name);
+
   constructor(private readonly httpService: HttpService) {}
 
   private handleRequestError(error: unknown, context: string) {
     // Log useful debug information
     if ((error as AxiosError).isAxiosError) {
       const axiosErr = error as AxiosError;
-      console.error(`${context} - AxiosError:`, {
+      this.logger.error(`${context} - AxiosError:`, {
         message: axiosErr.message,
         url: axiosErr.config?.url,
         method: axiosErr.config?.method,
@@ -36,7 +38,7 @@ export class SpotifyClient {
       const message = axiosErr.response?.data || axiosErr.message;
       // Provide clearer guidance for 401s from Spotify
       if (status === HttpStatus.UNAUTHORIZED) {
-        console.error(
+        this.logger.error(
           `${context} - 401 Unauthorized from Spotify. Common causes: expired/invalid access token, using client-credentials token for user endpoints, or missing scopes (e.g. playlist-modify-public).`,
         );
         throw new HttpException(
@@ -53,7 +55,7 @@ export class SpotifyClient {
     }
 
     // Unknown error
-    console.error(`${context} - Unknown error:`, error);
+    this.logger.error(`${context} - Unknown error:`, error);
     throw new HttpException(
       'Internal Server Error',
       HttpStatus.INTERNAL_SERVER_ERROR,
@@ -143,7 +145,7 @@ export class SpotifyClient {
       const foundTracks: MappedSongMetadata[] = [];
       const unfoundTracks: string[] = [];
 
-      console.log(
+      this.logger.log(
         `Searching Spotify tracks for artist "${averageSetlist.artistName}"` +
           (coverSongs.length
             ? ` (${coverSongs.length} cover(s) will fall back to original artist if needed)`
@@ -180,7 +182,7 @@ export class SpotifyClient {
 
       // If strict search found nothing, retry with loose search
       if (!artistId) {
-        console.log(
+        this.logger.log(
           `No results with strict search for "${averageSetlist.artistName}", retrying with loose search`,
         );
         const looseRequests = averageSetlist.songs.map((song) =>
@@ -223,7 +225,7 @@ export class SpotifyClient {
         }
       }
 
-      console.log(
+      this.logger.log(
         `Resolved Spotify artist ID: ${artistId} (appeared ${maxCount} times across results)`,
       );
 
@@ -247,7 +249,7 @@ export class SpotifyClient {
               ),
             );
         if (!match) {
-          console.log(
+          this.logger.log(
             `[COVER FALLBACK] "${song.title}" not found for ${averageSetlist.artistName}, trying ${song.coverArtist}`,
           );
           coverFallbackIndices.push(idx);
@@ -299,7 +301,7 @@ export class SpotifyClient {
             spotifySongId: track.id,
           });
         } else {
-          console.log(
+          this.logger.log(
             `[UNMAPPED] "${song.title}"${
               song.coverArtist ? ` (cover of ${song.coverArtist})` : ''
             } - ${items.length} results`,
@@ -363,7 +365,7 @@ export class SpotifyClient {
         public: true,
       };
 
-      console.log(`Creating Playlist for ${playlistMetadata.artistName}`);
+      this.logger.log(`Creating Playlist for ${playlistMetadata.artistName}`);
       const createPlaylistResponse = await this.httpService
         .post(
           `https://api.spotify.com/v1/users/${userId}/playlists`,
@@ -442,10 +444,10 @@ export class SpotifyClient {
           },
         ),
       );
-      console.log(`Uploaded cover image for playlist ${playlistId}`);
+      this.logger.log(`Uploaded cover image for playlist ${playlistId}`);
     } catch (error) {
       // Non-fatal — playlist still works without a custom cover
-      console.error(
+      this.logger.error(
         'Failed to upload playlist cover:',
         (error as any)?.message,
       );

@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
+import { Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import express from 'express';
@@ -22,11 +23,13 @@ async function bootstrap() {
   if (shouldListenLocally) {
     const port = process.env.PORT ? Number(process.env.PORT) : 3333;
     await app.listen(port);
-    console.log(`NestJS (express) listening on http://localhost:${port}`);
+    new Logger('Bootstrap').log(`Listening on http://localhost:${port}`);
   }
 }
 
-bootstrap().catch((err) => console.error('NestJS app failed to start', err));
+bootstrap().catch((err) =>
+  new Logger('Bootstrap').error('NestJS app failed to start', err),
+);
 
 // This is the key export that Vercel (and other serverless platforms) needs
 export default expressApp;
