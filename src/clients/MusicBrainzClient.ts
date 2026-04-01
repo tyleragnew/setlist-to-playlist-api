@@ -37,7 +37,10 @@ export class MusicBrainzClient {
         imageURL: artist.imageURL,
       }));
     } catch (error) {
-      this.logger.error(`Unable to call MusicBrainz for artist: ${artist}`, error);
+      this.logger.error(
+        `Unable to call MusicBrainz for artist: ${artist}`,
+        error,
+      );
     }
   }
 
