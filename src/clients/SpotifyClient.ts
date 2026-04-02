@@ -272,6 +272,47 @@ export class SpotifyClient {
         allResponses[idx] = coverFallbackResponses[i];
       });
 
+      // If preferLive is enabled, search for live versions of each song
+      let liveTrackMap: Map<number, any> | null = null;
+      if (averageSetlist.preferLive) {
+        this.logger.log('Prefer Live enabled — searching for live versions');
+        const liveRequests = averageSetlist.songs.map((song) =>
+          this.httpService
+            .get(
+              this.generateSpotifyTrackURL(
+                `${song.title} live`,
+                song.coverArtist || averageSetlist.artistName,
+              ),
+              { headers },
+            )
+            .toPromise(),
+        );
+        const liveResponses = await Promise.all(liveRequests);
+        liveTrackMap = new Map();
+        liveResponses.forEach((response, idx) => {
+          const items = response.data.tracks.items;
+          const matchArtistId = coverFallbackIndices.includes(idx)
+            ? null
+            : artistId;
+          const liveTrack = matchArtistId
+            ? items.find(
+                (item: any) =>
+                  item.artists.some((a: any) => a.id === matchArtistId) &&
+                  /\blive\b/i.test(item.name),
+              )
+            : items.find(
+                (item: any) =>
+                  /\blive\b/i.test(item.name),
+              );
+          if (liveTrack) {
+            liveTrackMap.set(idx, liveTrack);
+          }
+        });
+        this.logger.log(
+          `Found live versions for ${liveTrackMap.size} of ${averageSetlist.songs.length} songs`,
+        );
+      }
+
       // Build final results
       averageSetlist.songs.forEach((song, idx) => {
         const items = allResponses[idx].data.tracks.items;
@@ -293,6 +334,11 @@ export class SpotifyClient {
                     averageSetlist.artistName.toLowerCase(),
                 ),
               );
+        }
+
+        // Prefer live version if available
+        if (liveTrackMap?.has(idx)) {
+          track = liveTrackMap.get(idx);
         }
 
         if (track != null) {

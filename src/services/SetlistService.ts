@@ -27,6 +27,7 @@ export type AverageSetlist = {
   similarity: number;
   showCount: number;
   playlistDescription?: string;
+  preferLive?: boolean;
 };
 
 export type ShowInfo = {

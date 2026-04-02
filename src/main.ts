@@ -5,6 +5,11 @@ import { AppModule } from './app.module';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import express from 'express';
 
+// Disable ANSI colors in non-TTY environments (e.g. Vercel)
+if (!process.stdout.isTTY) {
+  process.env.NO_COLOR = '1';
+}
+
 let expressApp;
 
 async function bootstrap() {
